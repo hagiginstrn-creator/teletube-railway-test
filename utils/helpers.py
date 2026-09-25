@@ -53,7 +53,7 @@ def make_nimbaha_link(direct_url, filename):
 
 
 
-def make_urldl_link(direct_url, timeout=15):
+def make_urldl_link(direct_url, timeout=60):
     """ لینک نیم‌بهای urldl.ir رو می‌سازه. """
     session = requests.Session()
     session.headers.update({
