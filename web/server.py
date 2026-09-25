@@ -135,16 +135,16 @@ async def admin_dashboard(_user: str = Depends(require_admin)):
 async def admin_update_settings(
     enable_direct_links: bool = Form(False),
     enable_channel_delivery: bool = Form(False),
+    enable_nimbaha: bool = Form(False),
     _user: str = Depends(require_admin),
 ):
-    # اگه کاربر هر دو رو خاموش کرد، برای اینکه چیزی از دست نره، کانال رو
-    # به‌صورت خودکار روشن نگه می‌داریم.
     if not enable_direct_links and not enable_channel_delivery:
         enable_channel_delivery = True
 
     update_settings({
         "enable_direct_links": enable_direct_links,
         "enable_channel_delivery": enable_channel_delivery,
+        "enable_nimbaha": enable_nimbaha,
     })
     return RedirectResponse(url="/admin", status_code=303)
 
