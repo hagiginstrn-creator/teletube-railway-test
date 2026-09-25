@@ -25,9 +25,9 @@ from core.downloader import download_video
 from core.uploader import send_to_channel
 from core.cleanup import schedule_cleanup
 from handlers.progress import report_progress
+from utils.helpers import make_nimbaha_link, make_urldl_link
 from web import store as link_store
 from web.settings import get_settings
-from utils.helpers import make_nimbaha_link
 
 
 async def process_download(context, chat_id, message_id, user_id, quality, url):
@@ -95,8 +95,21 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
         direct_link = f"{PUBLIC_BASE_URL}/files/{entry['token']}"
 
     nimbaha_link = None
+    urldl_link = None
     if direct_link and settings.get("enable_nimbaha"):
         nimbaha_link = make_nimbaha_link(direct_link, f"{title}.mp4")
+    if direct_link and settings.get("enable_urldl"):
+        # make_urldl_link با requests کار می‌کنه (blocking)، پس حتما توی
+        # executor صداش می‌زنیم تا event loop اصلی بات قفل نشه.
+        urldl_link = await loop.run_in_executor(None, lambda: make_urldl_link(direct_link))
+
+    def _extra_links_block():
+        lines = []
+        if nimbaha_link:
+            lines.append(f"💰 لینک نیم‌بها (nimbaha) | Half-price link:\n{nimbaha_link}")
+        if urldl_link:
+            lines.append(f"💰 لینک نیم‌بها (urldl) | Half-price link:\n{urldl_link}")
+        return ("\n\n".join(lines) + "\n\n") if lines else ""
 
     # --- Download complete / دانلود کامل شد ---
     next_step_text = (
@@ -131,12 +144,11 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
         if direct_link:
             final_text += (
                 f"🔗 لینک مستقیم (تا {LINK_TTL_HOURS} ساعت معتبره) | Direct link (valid for {LINK_TTL_HOURS}h)\n"
-                f"{direct_link}"
-            )
+                f"{direct_link}\n\n"
+                f"{_extra_links_block()}"
+            ).rstrip()
         else:
             final_text += "⚠️ لینک مستقیم ساخته نشد (PUBLIC_BASE_URL ست نشده)."
-        if nimbaha_link:
-            final_text += f"\n💰 لینک نیم‌بها | Half-price link:\n{nimbaha_link}"
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=final_text)
         # اگه لینک ساخته شده، فایل نباید الان پاک بشه — پاکسازی رو به TTL خودش می‌سپریم
         schedule_cleanup(context, None if direct_link else file_path, thumb_path)
@@ -187,14 +199,12 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
                 from_chat_id=TARGET_CHANNEL_USERNAME,
                 message_id=channel_msg_id,
             )
-            link_line = (
-                f"\n🔗 لینک مستقیم (تا {LINK_TTL_HOURS} ساعت) | Direct link ({LINK_TTL_HOURS}h): {direct_link}\n"
-                if direct_link else ""
-            )
-            nimbaha_line = (
-                f"\n💰 لینک نیم‌بها | Half-price link:\n{nimbaha_link}\n"
-                if nimbaha_link else ""
-            )
+            link_line = ""
+            if direct_link:
+                link_line = (
+                    f"\n🔗 لینک مستقیم (تا {LINK_TTL_HOURS} ساعت) | Direct link ({LINK_TTL_HOURS}h): {direct_link}\n\n"
+                    f"{_extra_links_block()}"
+                )
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
@@ -207,7 +217,6 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
                      f"🕒 زمان | Time : `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n"
                      f"━━━━━━━━━━━━━━━━━━━━\n"
                      f"{link_line}"
-                     f"{nimbaha_line}"
                      f"🚀 فایل آماده استفاده است.\n"
                      f"🚀 Your file is ready."
                              ),
