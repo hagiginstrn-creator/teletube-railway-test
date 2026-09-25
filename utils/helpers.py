@@ -2,7 +2,7 @@
 import re
 import base64
 from urllib.parse import quote
-
+import requests
 
 def extract_video_id(url):
     """شناسه ویدیوی یوتیوب رو از فرمت‌های مختلف لینک استخراج می‌کنه."""
