@@ -27,6 +27,7 @@ from core.cleanup import schedule_cleanup
 from handlers.progress import report_progress
 from web import store as link_store
 from web.settings import get_settings
+from utils.helpers import make_nimbaha_link
 
 
 async def process_download(context, chat_id, message_id, user_id, quality, url):
@@ -93,6 +94,10 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
         entry = link_store.create_link(file_path, title, file_size)
         direct_link = f"{PUBLIC_BASE_URL}/files/{entry['token']}"
 
+    nimbaha_link = None
+    if direct_link and settings.get("enable_nimbaha"):
+        nimbaha_link = make_nimbaha_link(direct_link, f"{title}.mp4")
+
     # --- Download complete / دانلود کامل شد ---
     next_step_text = (
         "📤 در حال ارسال به کانال...\n📤 Uploading to channel..." if enable_channel
@@ -130,6 +135,8 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
             )
         else:
             final_text += "⚠️ لینک مستقیم ساخته نشد (PUBLIC_BASE_URL ست نشده)."
+        if nimbaha_link:
+            final_text += f"\n💰 لینک نیم‌بها | Half-price link:\n{nimbaha_link}"
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=final_text)
         # اگه لینک ساخته شده، فایل نباید الان پاک بشه — پاکسازی رو به TTL خودش می‌سپریم
         schedule_cleanup(context, None if direct_link else file_path, thumb_path)
@@ -184,6 +191,10 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
                 f"\n🔗 لینک مستقیم (تا {LINK_TTL_HOURS} ساعت) | Direct link ({LINK_TTL_HOURS}h): {direct_link}\n"
                 if direct_link else ""
             )
+            nimbaha_line = (
+                f"\n💰 لینک نیم‌بها | Half-price link:\n{nimbaha_link}\n"
+                if nimbaha_link else ""
+            )
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
@@ -196,6 +207,7 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
                      f"🕒 زمان | Time : `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n"
                      f"━━━━━━━━━━━━━━━━━━━━\n"
                      f"{link_line}"
+                     f"{nimbaha_line}"
                      f"🚀 فایل آماده استفاده است.\n"
                      f"🚀 Your file is ready."
                              ),
