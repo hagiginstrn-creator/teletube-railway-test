@@ -60,7 +60,7 @@ def make_urldl_link(direct_url, timeout=60):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     })
     try:
-        logger.info(f"Sending request to urldl.ir for: {direct_url}")
+        logger.info(f"urldl step 1: POST {direct_url}")
         resp1 = session.post(
             "https://urldl.ir/add-link",
             data={"fileurl": direct_url},
@@ -70,15 +70,17 @@ def make_urldl_link(direct_url, timeout=60):
         
         location = resp1.headers.get("Location")
         if not location:
-            logger.error(f"urldl error: No Location header. Status: {resp1.status_code}, Body: {resp1.text[:200]}")
+            logger.error(f"urldl step 1 failed: No Location header. Status: {resp1.status_code}")
             return None
             
         download_page_url = urljoin("https://urldl.ir", location)
+        logger.info(f"urldl step 2: GET {download_page_url}")
+        
         resp2 = session.get(download_page_url, timeout=timeout)
         
         match = re.search(r"/dl/[^\"'<> ]+", resp2.text)
         if not match:
-            logger.error(f"urldl error: Regex match failed on page: {download_page_url}. Status: {resp2.status_code}")
+            logger.error(f"urldl step 2 failed: Regex match failed on {download_page_url}")
             return None
             
         final_link = f"https://urldl.ir{match.group(0)}"
