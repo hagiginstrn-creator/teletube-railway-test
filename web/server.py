@@ -56,6 +56,7 @@ def _fmt_time(ts):
 def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_direct = "checked" if settings.get("enable_direct_links", True) else ""
     checked_channel = "checked" if settings.get("enable_channel_delivery", True) else ""
+    checked_nimbaha = "checked" if settings.get("enable_nimbaha", False) else ""
 
     rows = ""
     for entry in links:
@@ -106,6 +107,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     <form method="post" action="/admin/settings">
       <label><input type="checkbox" name="enable_direct_links" {checked_direct}> فعال بودن لینک مستقیم دانلود</label>
       <label><input type="checkbox" name="enable_channel_delivery" {checked_channel}> فعال بودن ارسال از طریق کانال تلگرام</label>
+      <label><input type="checkbox" name="enable_nimbaha" {checked_nimbaha}> ارائه‌ی لینک نیم‌بها (ترافیک داخلی)</label>
       <p style="color:#888;font-size:13px">اگه هر دو غیرفعال بشن، ارسال از طریق کانال به‌صورت خودکار فعال می‌مونه.</p>
       <button type="submit" class="primary">ذخیره تنظیمات</button>
     </form>
