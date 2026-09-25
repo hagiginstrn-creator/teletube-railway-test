@@ -15,6 +15,9 @@ from config import SETTINGS_PATH
 _DEFAULTS = {
     "enable_direct_links": True,
     "enable_channel_delivery": True,
+    "enable_direct_links": True,
+    "enable_channel_delivery": True,
+    "enable_nimbaha": False,
 }
 
 _lock = threading.Lock()
