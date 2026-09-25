@@ -41,3 +41,11 @@ def format_size(num_bytes):
             return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
         size /= 1024
     return f"{size:.1f} TB"
+
+
+def make_nimbaha_link(direct_url, filename):
+    """لینک نیم‌بهای آروان‌کلود رو از روی لینک مستقیم می‌سازه."""
+    encoded = base64.b64encode(direct_url.encode("utf-8")).decode("ascii")
+    safe_name = quote(filename)
+    safe_encoded = quote(encoded, safe="")
+    return f"https://nimbaha.ehsanpakar90.arvanedge.ir/file/{safe_name}?url={safe_encoded}"
