@@ -1,5 +1,7 @@
 """توابع کمکی عمومی که در چند جای پروژه استفاده می‌شن."""
 import re
+import base64
+from urllib.parse import quote
 
 
 def extract_video_id(url):
