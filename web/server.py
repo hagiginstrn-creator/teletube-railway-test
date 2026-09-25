@@ -138,6 +138,7 @@ async def admin_update_settings(
     enable_direct_links: bool = Form(False),
     enable_channel_delivery: bool = Form(False),
     enable_nimbaha: bool = Form(False),
+    enable_urldl: bool = Form(False),
     _user: str = Depends(require_admin),
 ):
     if not enable_direct_links and not enable_channel_delivery:
@@ -147,6 +148,7 @@ async def admin_update_settings(
         "enable_direct_links": enable_direct_links,
         "enable_channel_delivery": enable_channel_delivery,
         "enable_nimbaha": enable_nimbaha,
+        "enable_urldl": enable_urldl,
     })
     return RedirectResponse(url="/admin", status_code=303)
 
