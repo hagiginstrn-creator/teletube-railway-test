@@ -54,37 +54,35 @@ def make_nimbaha_link(direct_url, filename):
 
 
 
-def make_urldl_link(direct_url, timeout=60):
-    """ لینک نیم‌بهای urldl.ir رو می‌سازه. """
+def make_urldl_link(direct_url, timeout=30):
+    """ لینک نیم‌بهای urldl.ir رو می‌سازه. (نسخه بهینه‌شده با یک ریکوئست) """
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     })
     try:
-        logger.info(f"urldl step 1: POST {direct_url}")
-        resp1 = session.post(
+        logger.info(f"urldl optimized POST: {direct_url}")
+        resp = session.post(
             "https://urldl.ir/add-link",
             data={"fileurl": direct_url},
             timeout=timeout,
             allow_redirects=False,
         )
         
-        location = resp1.headers.get("Location")
+        location = resp.headers.get("Location")
         if not location:
-            logger.error(f"urldl step 1 failed: No Location header. Status: {resp1.status_code}")
+            logger.error(f"urldl error: No Location header. Status: {resp.status_code}")
             return None
             
-        download_page_url = urljoin("https://urldl.ir", location)
-        logger.info(f"urldl step 2: GET {download_page_url}")
-        
-        resp2 = session.get(download_page_url, timeout=timeout)
-        
-        match = re.search(r"/dl/[^\"'<> ]+", resp2.text)
+        # استخراج فقط عدد (شناسه فایل) از آدرس مثلا download/561075
+        match = re.search(r"\d+", location)
         if not match:
-            logger.error(f"urldl step 2 failed: Regex match failed on {download_page_url}")
+            logger.error(f"urldl error: No ID found in Location: {location}")
             return None
             
-        final_link = f"https://urldl.ir{match.group(0)}"
+        file_id = match.group(0)
+        final_link = f"https://urldl.ir/dl/{file_id}"
+        
         logger.info(f"urldl link successfully created: {final_link}")
         return final_link
         
