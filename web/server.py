@@ -134,13 +134,14 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             body[dir="ltr"] {{ text-align: left; }}
             body[dir="rtl"] {{ text-align: right; }}
 
-            /* Fixed Navbar Positioning */
+            /* Fixed Navbar Positioning (Always LTR to prevent swap) */
             .fixed-nav-container {{
                 position: relative; width: 100%; height: 40px;
-                display: flex; align-items: center;
+                display: flex; align-items: center; justify-content: space-between;
+                direction: ltr !important; 
             }}
-            .fixed-brand {{ position: absolute; right: 15px; direction: ltr; }}
-            .fixed-lang {{ position: absolute; left: 15px; }}
+            .fixed-brand {{ direction: ltr; }}
+            .fixed-lang {{ direction: ltr; }}
 
             .bg-orb {{ position: fixed; border-radius: 50%; filter: blur(100px); z-index: -1; animation: float 12s infinite ease-in-out alternate; }}
             .orb-1 {{ width: 400px; height: 400px; background: rgba(99, 102, 241, 0.3); top: -10%; left: -10%; }}
@@ -175,16 +176,45 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .btn-close {{ filter: invert(1); opacity: 0.7; }}
             .btn-close:hover {{ opacity: 1; }}
 
-            .btn-glass-primary {{ background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: var(--accent-color); transition: all 0.3s; border-radius: 12px; }}
-            .btn-glass-primary:hover {{ background: rgba(56, 189, 248, 0.3); color: #fff; box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }}
-            
+            /* Water Bottle Button */
+            .water-btn {{
+                position: relative;
+                overflow: hidden;
+                background: rgba(56, 189, 248, 0.05);
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                color: var(--accent-color);
+                border-radius: 12px;
+                user-select: none;
+                touch-action: none; /* Prevent scroll on touch devices while holding */
+                cursor: pointer;
+                transition: transform 0.1s;
+            }}
+            .water-btn:active {{
+                transform: scale(0.98);
+            }}
+            .water-fill {{
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 0%;
+                background: rgba(56, 189, 248, 0.6);
+                z-index: 1;
+                transition: height 0.05s linear;
+            }}
+            .water-text {{
+                position: relative;
+                z-index: 2;
+                font-weight: 600;
+            }}
+
             .btn-glass-danger {{ background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fb7185; transition: all 0.3s; border-radius: 12px; }}
             .btn-glass-danger:hover {{ background: rgba(244, 63, 94, 0.3); color: #fff; box-shadow: 0 0 15px rgba(244, 63, 94, 0.3); }}
 
             .copy-btn {{ background: rgba(255, 255, 255, 0.05) !important; color: #cbd5e1 !important; border-color: var(--glass-border) !important; transition: background 0.2s; }}
             .copy-btn:hover {{ background: rgba(255, 255, 255, 0.15) !important; color: #fff !important; }}
 
-            .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); cursor: pointer; }}
+            .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); cursor: pointer; float: none; margin-top: 0; width: 2.5em; height: 1.25em; }}
             .form-switch .form-check-input:checked {{ background-color: var(--accent-color); border-color: var(--accent-color); }}
 
             ::-webkit-scrollbar {{ width: 8px; }}
@@ -215,10 +245,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <div class="container mb-5 pb-5">
     
-        <!-- تایمر Railway -->
+        <!-- تایمر Railway (30 روزه) -->
         <div class="glass p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-center shadow-sm" style="border-radius: 16px;">
             <div class="d-flex align-items-center mb-2 mb-md-0">
-                <i class="bi bi-rocket-takeoff fs-2 text-warning me-3" style="margin-left: 1rem;"></i>
+                <i class="bi bi-rocket-takeoff fs-2 text-warning mx-3"></i>
                 <div>
                     <h6 class="mb-1 fw-bold text-white" data-en="Server Plan Expiration" data-fa="زمان پایان پلن سرور">Server Plan Expiration</h6>
                     <small class="text-info" id="railwayTimer" data-en="Calculating..." data-fa="در حال محاسبه...">Calculating...</small>
@@ -232,31 +262,44 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         <div class="row">
             <!-- Settings Panel -->
             <div class="col-lg-6 mb-4">
-                <div class="glass p-4 h-100">
+                <div class="glass p-4 h-100 d-flex flex-column">
                     <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
-                    <form action="/admin/settings" method="post">
-                        <div class="d-flex flex-column gap-3">
-                            <div class="form-check form-switch fs-5">
-                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
-                                <label class="form-check-label fs-6 mt-1" for="c1" data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</label>
-                            </div>
-                            <div class="form-check form-switch fs-5">
-                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
-                                <label class="form-check-label fs-6 mt-1" for="c2" data-en="Upload to Telegram Channel" data-fa="آپلود در کانال تلگرام">Upload to Telegram Channel</label>
-                            </div>
-                            <div class="form-check form-switch fs-5">
-                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
-                                <label class="form-check-label fs-6 mt-1" for="c3" data-en="Internal urldl.ir Route" data-fa="مسیر داخلی urldl.ir">Internal urldl.ir Route</label>
-                            </div>
-                            
-                            <div class="mt-2">
-                                <label class="form-label text-info small mb-1" data-en="Set Plan Remaining Days (Leave empty to keep current)" data-fa="تنظیم دستی روزهای باقی‌مانده پلن (خالی بگذارید تا تغییر نکند)">Set Plan Remaining Days (Leave empty to keep current)</label>
-                                <input type="number" class="form-control" name="plan_days" placeholder="30">
+                    <form action="/admin/settings" method="post" id="settingsForm" class="flex-grow-1 d-flex flex-column">
+                        
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-10 mb-2">
+                            <label class="form-check-label fs-6 mb-0" for="c1" data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</label>
+                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                <input class="form-check-input m-0" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
                             </div>
                         </div>
-                        <div class="mt-4 pt-3 border-top border-secondary border-opacity-25">
-                            <button type="submit" class="btn btn-glass-primary px-4 py-2 w-100">
-                                <i class="bi bi-hdd-network me-2"></i> <span data-en="Apply Settings" data-fa="اعمال تنظیمات">Apply Settings</span>
+                        
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-10 mb-2">
+                            <label class="form-check-label fs-6 mb-0" for="c2" data-en="Upload to Telegram Channel" data-fa="آپلود در کانال تلگرام">Upload to Telegram Channel</label>
+                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                <input class="form-check-input m-0" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-10 mb-3">
+                            <label class="form-check-label fs-6 mb-0" for="c3" data-en="Internal urldl.ir Route" data-fa="مسیر داخلی urldl.ir">Internal urldl.ir Route</label>
+                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                <input class="form-check-input m-0" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-auto">
+                            <label class="form-label text-info small mb-1" data-en="Set Plan Remaining Days (Leave empty to keep current)" data-fa="تنظیم دستی روزهای باقی‌مانده پلن (خالی بگذارید تا تغییر نکند)">Set Plan Remaining Days (Leave empty to keep current)</label>
+                            <input type="number" class="form-control mb-4" name="plan_days" placeholder="30">
+                        </div>
+                        
+                        <!-- Water Bottle Button -->
+                        <div class="mt-3 pt-3 border-top border-secondary border-opacity-25">
+                            <button type="button" class="btn water-btn w-100 py-3" id="holdBtn">
+                                <div class="water-fill" id="waterFill"></div>
+                                <span class="water-text">
+                                    <i class="bi bi-hdd-network me-2"></i> 
+                                    <span data-en="Hold to Apply Settings" data-fa="برای اعمال تنظیمات نگه دارید">Hold to Apply Settings</span>
+                                </span>
                             </button>
                         </div>
                     </form>
@@ -267,10 +310,12 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             <div class="col-lg-6 mb-4">
                 <div class="glass p-4 h-100">
                     <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
+                    
                     <div class="d-flex flex-column justify-content-center align-items-center h-75 opacity-50">
                         <i class="bi bi-tools fs-1 mb-2"></i>
                         <span data-en="Features will be added soon..." data-fa="امکانات این بخش به زودی اضافه خواهد شد...">Features will be added soon...</span>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -280,7 +325,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             
             <!-- Filter Dropdown -->
             <div class="dropdown">
-                <button class="btn btn-glass-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-outline-info dropdown-toggle" style="border-radius: 12px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-filter"></i> <span id="currentFilterLabel" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark glass-dropdown shadow-lg">
@@ -374,9 +419,52 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 el.innerText = el.getAttribute(`data-${{currentLang}}`);
             }});
             
-            // Update timer text without full refresh
             updateRailwayTimer();
         }}
+
+        // Water Bottle "Hold to Submit" Logic
+        const holdBtn = document.getElementById('holdBtn');
+        const waterFill = document.getElementById('waterFill');
+        const settingsForm = document.getElementById('settingsForm');
+        let holdTimer;
+        let progress = 0;
+        let isHolding = false;
+
+        function startHold(e) {{
+            // prevent text selection and right click on mobile
+            if(e.cancelable) e.preventDefault();
+            isHolding = true;
+            progress = 0;
+            waterFill.style.height = '0%';
+            
+            // 50 قدم * 20 میلی‌ثانیه = 1 ثانیه زمان پر شدن
+            holdTimer = setInterval(() => {{
+                progress += 2;
+                waterFill.style.height = progress + '%';
+                
+                if (progress >= 100) {{
+                    clearInterval(holdTimer);
+                    waterFill.style.background = '#10b981'; // سبز میشه
+                    document.querySelector('.water-text').innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                    setTimeout(() => settingsForm.submit(), 200); // ارسال فرم
+                }}
+            }}, 20);
+        }}
+
+        function stopHold() {{
+            isHolding = false;
+            clearInterval(holdTimer);
+            if (progress < 100) {{
+                progress = 0;
+                waterFill.style.height = '0%';
+            }}
+        }}
+
+        holdBtn.addEventListener('mousedown', startHold);
+        holdBtn.addEventListener('mouseup', stopHold);
+        holdBtn.addEventListener('mouseleave', stopHold);
+        holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
+        holdBtn.addEventListener('touchend', stopHold);
 
         // Custom Timer Logic
         const expireTimeMs = {expire_time_ms};
@@ -407,7 +495,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
         // Video Filter Logic
         function filterVideos(type, element) {{
-            // Update Dropdown Label
             document.getElementById('currentFilterLabel').innerText = element.getAttribute(`data-${{currentLang}}`);
             document.getElementById('currentFilterLabel').setAttribute('data-en', element.getAttribute('data-en'));
             document.getElementById('currentFilterLabel').setAttribute('data-fa', element.getAttribute('data-fa'));
@@ -501,7 +588,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 async def admin_dashboard(_user: str = Depends(require_admin)):
     settings = get_settings()
     
-    # اگر expire_time ست نشده بود، ۳۰ روز بعد از الان رو به عنوان پیش‌فرض در نظر بگیر
     if "expire_time" not in settings:
         settings["expire_time"] = time.time() + (30 * 24 * 3600)
         update_settings({"expire_time": settings["expire_time"]})
@@ -528,7 +614,6 @@ async def admin_update_settings(
         "enable_urldl": enable_urldl,
     }
     
-    # تنظیم دستی زمان باقی‌مانده پلن سرور
     if plan_days and plan_days.strip().isdigit():
         days = int(plan_days.strip())
         new_settings["expire_time"] = time.time() + (days * 24 * 3600)
