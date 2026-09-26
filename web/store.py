@@ -84,24 +84,28 @@ def list_links(include_expired=False):
 
 
 def delete_link(token, delete_file=True):
-    """یک لینک رو (و اختیاری فایلش رو) حذف می‌کنه؛ برای دکمه‌ی حذف دستی توی پنل."""
+    """یک لینک رو (و اختیاری فایل‌هاش رو) حذف می‌کنه؛ برای دکمه‌ی حذف دستی توی پنل."""
     with _lock:
         data = _load()
         entry = data.pop(token, None)
         _save(data)
+        
     if entry and delete_file:
         p = entry.get("file_path")
+        t = entry.get("thumb_path")  # مسیر تامبنیل
         try:
             if p and os.path.exists(p):
                 os.remove(p)
+            if t and os.path.exists(t):
+                os.remove(t)
         except Exception as e:
-            logger.error(f"خطا در حذف فایل لینک {token}: {e}")
+            logger.error(f"خطا در حذف فایل‌های لینک {token}: {e}")
+            
     return entry
 
 
 def purge_expired():
-    """لینک‌های منقضی‌شده رو از دیتابیس درمیاره و فایل‌هاشون رو پاک می‌کنه.
-    یک تسک دوره‌ای این رو صدا می‌زنه (به bot.py نگاه کن)."""
+    """لینک‌های منقضی‌شده رو از دیتابیس درمیاره و فایل‌هاشون رو پاک می‌کنه."""
     with _lock:
         data = _load()
         now = time.time()
@@ -109,16 +113,19 @@ def purge_expired():
         removed = [data.pop(t) for t in expired_tokens]
         if expired_tokens:
             _save(data)
-
+            
     for entry in removed:
         p = entry.get("file_path")
+        t = entry.get("thumb_path")  # مسیر تامبنیل
         try:
             if p and os.path.exists(p):
                 os.remove(p)
-                logger.info(f"فایل لینک منقضی‌شده حذف شد: {p}")
+            if t and os.path.exists(t):
+                os.remove(t)
+            logger.info(f"فایل و تامبنیل لینک منقضی‌شده حذف شد: {p}")
         except Exception as e:
             logger.error(f"خطا در حذف فایل منقضی {p}: {e}")
-
+            
     return removed
 
 
