@@ -308,7 +308,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         <div class="container">
             <a class="navbar-brand fw-bold text-white d-flex align-items-center" href="#">
                 <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
-                <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">ADMIN</span></span>
+                <span style="letter-spacing: 1px;">TELETUBE DASHBOARD</span>
             </a>
         </div>
     </nav>
