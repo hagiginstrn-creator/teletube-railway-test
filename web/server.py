@@ -60,7 +60,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     
     links.sort(key=lambda x: (x.get('is_deleted', False), -x['created_at']))
     
-    # تولید تگ‌های انتخاب روز و ساعت برای منوی کشویی
     days_options = "".join([f'<option value="{i}" {"selected" if i==30 else ""}>{i}</option>' for i in range(61)])
     hours_options = "".join([f'<option value="{i}">{i}</option>' for i in range(24)])
     
@@ -150,17 +149,23 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
             @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
 
+            /* انیمیشن پالس موشک */
+            @keyframes rocket-pulse {{
+                0% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
+                50% {{ transform: scale(1.15) translateY(-2px); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }}
+                100% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
+            }}
+            .rocket-animated {{
+                animation: rocket-pulse 2s infinite ease-in-out;
+                display: inline-block;
+            }}
+
             .glass {{ background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }}
             .navbar-glass {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); }}
             .glass-dropdown {{ background: rgba(15, 23, 42, 0.9) !important; backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 12px; }}
             .glass-dropdown .dropdown-item:hover {{ background: rgba(56, 189, 248, 0.2); color: #fff; }}
 
-            /* Plan Timer Custom Widget */
-            .timer-widget {{
-                background: linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.8) 100%);
-                border: 1px solid rgba(56, 189, 248, 0.2);
-                border-radius: 20px;
-            }}
+            .timer-widget {{ background: linear-gradient(135deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.8) 100%); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 20px; }}
 
             .video-card {{ cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s; display: flex; flex-direction: column; position: relative; overflow: hidden; }}
             .video-card:hover {{ transform: translateY(-8px); background: rgba(30, 41, 59, 0.6); border-color: rgba(56, 189, 248, 0.3); }}
@@ -233,13 +238,13 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         <div class="glass timer-widget p-4 mb-5 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div class="d-flex align-items-center mb-3 mb-md-0">
                 <div class="p-3 rounded-circle me-3 ms-2" style="background: rgba(245, 158, 11, 0.1);">
-                    <i class="bi bi-rocket-takeoff fs-2 text-warning"></i>
+                    <!-- افکت اختصاصی پالس روی موشک -->
+                    <i class="bi bi-rocket-takeoff fs-2 text-warning rocket-animated"></i>
                 </div>
                 <div>
                     <h5 class="mb-1 fw-bold text-white" data-en="Server Plan Expiration" data-fa="زمان پایان پلن سرور">Server Plan Expiration</h5>
                     <div class="d-flex align-items-center">
-                        <span class="spinner-grow spinner-grow-sm text-warning me-2 opacity-75" role="status"></span>
-                        <span class="text-info fs-6" id="railwayTimer" style="letter-spacing: 0.5px;" data-en="Calculating..." data-fa="در حال محاسبه...">Calculating...</span>
+                        <span class="text-info fs-6" id="railwayTimer" style="letter-spacing: 0.5px;"></span>
                     </div>
                 </div>
             </div>
@@ -338,17 +343,29 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 pb-4 mt-3">
-                    <form action="/admin/plan/update" method="post">
+                    <!-- دکمه‌های آماده (Quick Presets) -->
+                    <div class="mb-4">
+                        <label class="form-label text-info small fw-bold mb-2" data-en="Quick Presets" data-fa="گزینه‌های سریع">Quick Presets</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="submitQuickPlan(29, 12)" data-en="29d 12h" data-fa="۲۹ روز و ۱۲ ساعت">29d 12h</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="submitQuickPlan(29, 0)" data-en="29 Days" data-fa="۲۹ روز">29 Days</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="submitQuickPlan(25, 0)" data-en="25 Days" data-fa="۲۵ روز">25 Days</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="submitQuickPlan(15, 0)" data-en="15 Days" data-fa="۱۵ روز">15 Days</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="submitQuickPlan(10, 0)" data-en="10 Days" data-fa="۱۰ روز">10 Days</button>
+                        </div>
+                    </div>
+                    
+                    <form action="/admin/plan/update" method="post" id="planForm">
                         <div class="row g-3 mb-4">
                             <div class="col-6">
                                 <label class="form-label text-info small fw-bold" data-en="Days" data-fa="روز">Days</label>
-                                <select name="days" class="form-select text-center fw-bold" dir="ltr">
+                                <select name="days" class="form-select text-center fw-bold" dir="ltr" id="selectDays">
                                     {days_options}
                                 </select>
                             </div>
                             <div class="col-6">
                                 <label class="form-label text-info small fw-bold" data-en="Hours" data-fa="ساعت">Hours</label>
-                                <select name="hours" class="form-select text-center fw-bold" dir="ltr">
+                                <select name="hours" class="form-select text-center fw-bold" dir="ltr" id="selectHours">
                                     {hours_options}
                                 </select>
                             </div>
@@ -418,9 +435,37 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Language Toggle System
+        // Custom Timer Logic (اجرای آنی و بدون تاخیر)
+        const expireTimeMs = {expire_time_ms};
         let currentLang = localStorage.getItem('teletube_lang') || 'en';
+
+        function updateRailwayTimer() {{
+            const now = Date.now();
+            const diff = expireTimeMs - now;
+            
+            if (diff <= 0) {{
+                const msg = currentLang === 'fa' ? 'پلن منقضی شده است' : 'Plan Expired';
+                document.getElementById('railwayTimer').innerText = msg;
+                document.getElementById('railwayTimer').className = 'text-danger fw-bold fs-6';
+                return;
+            }}
+            
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / 1000 / 60) % 60);
+            
+            const msg = currentLang === 'fa' 
+                ? `${{d}} روز و ${{h}} ساعت و ${{m}} دقیقه دیگر` 
+                : `${{d}}d ${{h}}h ${{m}}m remaining`;
+                
+            document.getElementById('railwayTimer').innerText = msg;
+        }}
         
+        // اجرای سریع در لحظه لود
+        updateRailwayTimer();
+        setInterval(updateRailwayTimer, 60000);
+
+        // Language Toggle System
         function applyLanguage() {{
             document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
             document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
@@ -447,31 +492,12 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         
         applyLanguage();
 
-        // Custom Timer Logic
-        const expireTimeMs = {expire_time_ms};
-
-        function updateRailwayTimer() {{
-            const now = Date.now();
-            const diff = expireTimeMs - now;
-            
-            if (diff <= 0) {{
-                const msg = currentLang === 'fa' ? 'پلن منقضی شده است' : 'Plan Expired';
-                document.getElementById('railwayTimer').innerText = msg;
-                document.getElementById('railwayTimer').className = 'text-danger fw-bold fs-6';
-                return;
-            }}
-            
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-            const m = Math.floor((diff / 1000 / 60) % 60);
-            
-            const msg = currentLang === 'fa' 
-                ? `${{d}} روز و ${{h}} ساعت و ${{m}} دقیقه دیگر` 
-                : `${{d}}d ${{h}}h ${{m}}m remaining`;
-                
-            document.getElementById('railwayTimer').innerText = msg;
+        // سابمیت سریع تنظیم زمان از طریق دکمه‌های پاپ‌آپ
+        function submitQuickPlan(days, hours) {{
+            document.getElementById('selectDays').value = days;
+            document.getElementById('selectHours').value = hours;
+            document.getElementById('planForm').submit();
         }}
-        setInterval(updateRailwayTimer, 60000);
 
         // Water Bottle Hold Logic
         const holdBtn = document.getElementById('holdBtn');
