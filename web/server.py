@@ -1,17 +1,116 @@
 """ وب‌سرور FastAPI: مسیر دانلود مستقیم فایل‌ها + پنل مدیریت ساده. """
 import os
 import time
+import secrets
 from datetime import datetime
-from fastapi import Depends, FastAPI, HTTPException, Form
+from fastapi import Depends, FastAPI, HTTPException, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 
-from config import LINK_TTL_HOURS, PUBLIC_BASE_URL
+from config import LINK_TTL_HOURS, PUBLIC_BASE_URL, ADMIN_PANEL_USERNAME, ADMIN_PANEL_PASSWORD
 from utils.helpers import format_size
 from web import store
 from web.settings import get_settings, update_settings
-from web.auth import require_admin
+from web.auth import require_admin, create_session
 
 app = FastAPI(title="TeleTube", docs_url=None, redoc_url=None)
+
+# دیکشنری برای ذخیره تلاش‌های ناموفق لاگین: { "IP": {"count": int, "lock_until": float} }
+FAILED_ATTEMPTS = {}
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = None, mins: str = None):
+    error_msg = ""
+    if error == "invalid":
+        error_msg = '<div class="mt-3 p-2 rounded" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.4); color: #fb7185; font-size: 0.85rem;">نام کاربری یا رمز عبور اشتباه است!</div>'
+    elif error == "locked":
+        error_msg = f'<div class="mt-3 p-2 rounded" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.4); color: #fb7185; font-size: 0.85rem;"><i class="bi bi-shield-lock-fill me-1"></i> دسترسی شما مسدود شد. لطفاً {mins} دقیقه دیگر تلاش کنید.</div>'
+        
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en" dir="ltr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TeleTube Login</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <style>
+            :root {{ --glass-bg: rgba(30, 41, 59, 0.4); --glass-border: rgba(255, 255, 255, 0.08); --glass-blur: blur(16px); --accent-color: #38bdf8; }}
+            body {{ background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }}
+            .bg-orb {{ position: absolute; border-radius: 50%; filter: blur(100px); z-index: -1; animation: float 12s infinite ease-in-out alternate; }}
+            .orb-1 {{ width: 400px; height: 400px; background: rgba(99, 102, 241, 0.3); top: -10%; left: -10%; }}
+            .orb-2 {{ width: 500px; height: 500px; background: rgba(236, 72, 153, 0.2); bottom: -20%; right: -10%; animation-delay: -5s; }}
+            @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
+            .glass {{ background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); width: 100%; max-width: 380px; padding: 40px; position: relative; z-index: 10; }}
+            .form-control {{ background: rgba(0, 0, 0, 0.2) !important; border: 1px solid var(--glass-border) !important; color: #f8fafc !important; border-radius: 12px; padding: 12px 15px; }}
+            .form-control:focus {{ box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.2) !important; border-color: var(--accent-color) !important; }}
+            .btn-glass-primary {{ background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: var(--accent-color); transition: all 0.3s; border-radius: 12px; font-weight: 600; }}
+            .btn-glass-primary:hover {{ background: rgba(56, 189, 248, 0.3); color: #fff; box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }}
+        </style>
+    </head>
+    <body>
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="glass text-center">
+            <i class="bi bi-youtube text-danger" style="font-size: 3rem;"></i>
+            <h4 class="mt-2 mb-4 fw-bold" style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted fs-6">LOGIN</span></h4>
+            <form action="/login" method="post">
+                <div class="mb-3 text-start">
+                    <label class="form-label text-info small fw-bold">Username</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+                <div class="mb-4 text-start">
+                    <label class="form-label text-info small fw-bold">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-glass-primary w-100 py-3 mt-2">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+                </button>
+                {error_msg}
+            </form>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+@app.post("/login")
+async def process_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    client_ip = request.client.host
+    now = time.time()
+    
+    ip_record = FAILED_ATTEMPTS.get(client_ip, {"count": 0, "lock_until": 0})
+    if now < ip_record["lock_until"]:
+        remaining = int((ip_record["lock_until"] - now) / 60) or 1
+        return RedirectResponse(url=f"/login?error=locked&mins={remaining}", status_code=303)
+        
+    correct_username = secrets.compare_digest(username, ADMIN_PANEL_USERNAME)
+    correct_password = secrets.compare_digest(password, ADMIN_PANEL_PASSWORD)
+    
+    if correct_username and correct_password:
+        if client_ip in FAILED_ATTEMPTS:
+            del FAILED_ATTEMPTS[client_ip]
+        token = create_session()
+        response = RedirectResponse(url="/admin", status_code=303)
+        response.set_cookie(key="teletube_session", value=token, httponly=True, max_age=86400)
+        return response
+        
+    ip_record["count"] += 1
+    if ip_record["count"] >= 5:
+        ip_record["lock_until"] = now + 900
+        FAILED_ATTEMPTS[client_ip] = ip_record
+        return RedirectResponse(url="/login?error=locked&mins=15", status_code=303)
+        
+    FAILED_ATTEMPTS[client_ip] = ip_record
+    return RedirectResponse(url="/login?error=invalid", status_code=303)
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("teletube_session")
+    global _ACTIVE_SESSION
+    _ACTIVE_SESSION = None
+    return response
 
 @app.get("/")
 async def root():
@@ -32,11 +131,7 @@ async def download_file(token: str):
         
     store.record_download(token)
     filename = f"{entry['title']}.mp4"
-    return FileResponse(
-        entry["file_path"],
-        media_type="video/mp4",
-        filename=filename,
-    )
+    return FileResponse(entry["file_path"], media_type="video/mp4", filename=filename)
 
 @app.get("/thumbs/{token}")
 async def get_thumbnail(token: str):
@@ -45,9 +140,6 @@ async def get_thumbnail(token: str):
         return FileResponse(entry["thumb_path"])
     return Response(content=b"", media_type="image/jpeg")
 
-# ---------------------------------------------------------------------------
-# پنل مدیریت (Glassmorphism UI)
-# ---------------------------------------------------------------------------
 def _fmt_time(ts):
     return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
@@ -58,7 +150,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_anim = "checked" if settings.get("enable_animation", True) else ""
     
     expire_time_ms = settings.get("expire_time", time.time() + (30 * 24 * 3600)) * 1000
-    
     links.sort(key=lambda x: (x.get('is_deleted', False), -x['created_at']))
     
     days_options = "".join([f'<option value="{i}" {"selected" if i==30 else ""}>{i}</option>' for i in range(61)])
@@ -151,7 +242,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .orb-3 {{ width: 350px; height: 350px; background: rgba(56, 189, 248, 0.2); top: 30%; left: 40%; animation-duration: 18s; }}
 
             @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
-
             @keyframes rocket-pulse {{
                 0% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
                 50% {{ transform: scale(1.15) translateY(-2px); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }}
@@ -159,7 +249,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }}
             .rocket-animated {{ animation: rocket-pulse 2s infinite ease-in-out; display: inline-block; }}
 
-            /* CSS های جنگ فضایی (Easter Egg) با SVG */
             .space-entity {{
                 position: fixed;
                 pointer-events: none;
@@ -240,15 +329,17 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                         <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
                     </a>
                 </div>
-                <div class="fixed-lang">
+                <div class="fixed-lang d-flex align-items-center gap-2">
                     <button id="langBtn" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="toggleLanguage()">FA</button>
+                    <a href="/logout" class="btn btn-outline-danger btn-sm rounded-pill px-3" title="Logout">
+                        <i class="bi bi-power"></i>
+                    </a>
                 </div>
             </div>
         </nav>
 
         <div class="container mb-5 pb-5">
         
-            <!-- تایمر Railway Widget -->
             <div class="glass timer-widget p-4 mb-5 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div class="d-flex align-items-center mb-3 mb-md-0">
                     <div class="p-3 rounded-circle me-3 ms-2" style="background: rgba(245, 158, 11, 0.1);">
@@ -269,7 +360,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             </div>
 
             <div class="row">
-                <!-- Settings Panel -->
                 <div class="col-lg-6 mb-4">
                     <div class="glass p-4 h-100 d-flex flex-column">
                         <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
@@ -297,7 +387,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             </div>
                             
                             <div class="d-flex justify-content-between align-items-center py-3 mb-3">
-                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation " data-fa="انیمیشن نبرد فضایی ">Spaceship Animation (Easter Egg)</label>
+                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation (Easter Egg)" data-fa="انیمیشن نبرد فضایی (سورپرایز)">Spaceship Animation (Easter Egg)</label>
                                 <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
                                     <input class="form-check-input m-0" type="checkbox" name="enable_animation" id="c_anim" value="true" {checked_anim}>
                                 </div>
@@ -316,7 +406,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     </div>
                 </div>
 
-                <!-- Bot Control Panel -->
                 <div class="col-lg-6 mb-4">
                     <div class="glass p-4 h-100">
                         <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
@@ -352,7 +441,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         </div>
     </div> 
 
-    <!-- Modal for Adjusting Plan Time -->
     <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
@@ -399,7 +487,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         </div>
     </div>
 
-    <!-- Modal for Video Links -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
@@ -455,7 +542,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Custom Timer Logic 
         const expireTimeMs = {expire_time_ms};
         let currentLang = localStorage.getItem('teletube_lang') || 'en';
 
@@ -484,7 +570,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         updateRailwayTimer();
         setInterval(updateRailwayTimer, 60000);
 
-        // Language Toggle System
         function applyLanguage() {{
             document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
             document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
@@ -511,9 +596,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         
         applyLanguage();
 
-        // ----------------------------------------------------
-        // انیمیشن سفینه فضایی (SVG + Pixel Explosion) 🚀
-        // ----------------------------------------------------
         const ytSvg = `<svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ytGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -571,9 +653,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             </linearGradient>
           </defs>
           <g filter="url(#glow)">
-              <!-- دنباله سبز -->
               <rect x="16" y="45" width="8" height="35" fill="url(#trailGrad)" rx="4"/>
-              <!-- آیکون دانلود -->
               <circle cx="20" cy="15" r="8" fill="#39ff14" />
               <path d="M 16 15 L 24 15 L 24 40 L 30 40 L 20 55 L 10 40 L 16 40 Z" fill="#4ade80" />
               <path d="M 6 50 L 6 60 L 34 60 L 34 50" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
@@ -584,7 +664,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             const animCheckbox = document.getElementById('c_anim');
             if (!animCheckbox || !animCheckbox.checked) return;
 
-            const zLayer = Math.random() > 0.7 ? '9999' : '5'; // ۷۰ درصد میرن زیر شیشه‌ها
+            const zLayer = Math.random() > 0.7 ? '9999' : '5';
 
             const yt = document.createElement('div');
             yt.className = 'space-entity';
@@ -598,7 +678,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             tg.style.zIndex = zLayer;
             document.body.appendChild(tg);
 
-            // ورود رندوم از اطراف صفحه
             let ytX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
             let ytY = Math.random() * window.innerHeight;
             let tgX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
@@ -618,7 +697,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     return;
                 }}
                 
-                // فرار تصادفی تلگرام
                 tgX = Math.max(100, Math.min(window.innerWidth - 100, tgX + (Math.random() - 0.5) * 800));
                 tgY = Math.max(100, Math.min(window.innerHeight - 100, tgY + (Math.random() - 0.5) * 600));
                 
@@ -626,11 +704,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 tg.style.transform = `rotate(${{tgAngle + 90}}deg)`;
                 tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
 
-                // یوتیوب (راکت) در جهت حرکت میچرخه و دنبال میکنه
                 const currentYtX = parseFloat(yt.style.left);
                 const currentYtY = parseFloat(yt.style.top);
                 
-                ytX = tgX + (Math.random() > 0.5 ? 1 : -1) * (300 + Math.random() * 200); // فاصله بیشتر
+                ytX = tgX + (Math.random() > 0.5 ? 1 : -1) * (300 + Math.random() * 200);
                 ytY = tgY + (Math.random() > 0.5 ? 1 : -1) * (300 + Math.random() * 200);
                 
                 const ytFlyAngle = Math.atan2(ytY - currentYtY, ytX - currentYtX) * 180 / Math.PI;
@@ -643,13 +720,12 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }}
 
             function shoot() {{
-                // هدف‌گیری به سمت تلگرام
                 const aimAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
                 yt.style.transform = `rotate(${{aimAngle + 90}}deg)`;
                 
                 setTimeout(() => {{
                     const willHit = Math.random() > 0.35; 
-                    const doRapid = Math.random() > 0.4; // 60% احتمال رگبار زدن قبل از تیر اصلی
+                    const doRapid = Math.random() > 0.4; 
 
                     function fireBullet(isSmall, isHit) {{
                         const proj = document.createElement('div');
@@ -671,7 +747,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                         setTimeout(() => {{
                             let targetX, targetY;
                             if (isSmall || !isHit) {{
-                                // شلیک خطا
                                 const spread = isSmall ? (Math.random() - 0.5) * 60 : (Math.random() > 0.5 ? 30 : -30);
                                 const rad = (aimAngle + spread) * Math.PI / 180;
                                 targetX = ytX + Math.cos(rad) * 2000;
@@ -753,8 +828,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         setInterval(() => {{
             if (Math.random() > 0.3) triggerSpaceBattle();
         }}, 12000);
-
-        // ----------------------------------------------------
 
         function submitQuickPlan(days, hours) {{
             document.getElementById('selectDays').value = days;
@@ -883,7 +956,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     """
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard(_user: str = Depends(require_admin)):
+async def admin_dashboard(request: Request, _user: str = Depends(require_admin)):
     settings = get_settings()
     
     if "expire_time" not in settings:
@@ -895,6 +968,7 @@ async def admin_dashboard(_user: str = Depends(require_admin)):
 
 @app.post("/admin/settings")
 async def admin_update_settings(
+    request: Request,
     enable_direct_links: bool = Form(False),
     enable_channel_delivery: bool = Form(False),
     enable_nimbaha: bool = Form(False),
@@ -914,11 +988,11 @@ async def admin_update_settings(
     }
 
     update_settings(new_settings)
-    
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/plan/update")
 async def admin_update_plan_time(
+    request: Request,
     days: int = Form(0),
     hours: int = Form(0),
     _user: str = Depends(require_admin),
@@ -928,6 +1002,6 @@ async def admin_update_plan_time(
     return RedirectResponse(url="/admin", status_code=303)
 
 @app.post("/admin/links/{token}/delete")
-async def admin_delete_link(token: str, _user: str = Depends(require_admin)):
+async def admin_delete_link(request: Request, token: str, _user: str = Depends(require_admin)):
     store.delete_link(token, delete_file=True)
     return RedirectResponse(url="/admin", status_code=303)
