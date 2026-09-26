@@ -157,7 +157,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_urldl = "checked" if settings.get("enable_urldl", False) else ""
     checked_anim = "checked" if settings.get("enable_animation", True) else ""
     
-    expire_time_ms = settings.get("expire_time", time.time() + (30 * 24 * 3600)) * 1000
+    expire_time_ms = settings.get("expire_time", time.time() + (30 * 24 * 3600) - 3600) * 1000
     links.sort(key=lambda x: (x.get('is_deleted', False), -x['created_at']))
     
     days_options = "".join([f'<option value="{i}" {"selected" if i==30 else ""}>{i}</option>' for i in range(61)])
@@ -984,7 +984,7 @@ async def admin_dashboard(request: Request, _user: str = Depends(require_admin))
     settings = get_settings()
     
     if "expire_time" not in settings:
-        settings["expire_time"] = time.time() + (30 * 24 * 3600)
+        settings["expire_time"] = time.time() + (30 * 24 * 3600) - 3600
         update_settings({"expire_time": settings["expire_time"]})
         
     links = store.list_links(include_expired=True)
