@@ -53,7 +53,7 @@ async def login_page(request: Request, error: str = None, mins: str = None):
         <div class="bg-orb orb-2"></div>
         <div class="glass text-center">
             <i class="bi bi-youtube text-danger" style="font-size: 3rem;"></i>
-            <h4 class="mt-2 mb-4 fw-bold" style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted fs-6">LOGIN</span></h4>
+            <h4 class="mt-2 mb-4 fw-bold" style="letter-spacing: 1px;">TELETUBE <span class="fw-light fs-6" style="color: #10b981;">LOGIN</span></h4>
             <form action="/login" method="post">
                 <div class="mb-3 text-start">
                     <label class="form-label text-info small fw-bold">Username</label>
@@ -326,7 +326,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 <div class="fixed-brand">
                     <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
                         <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
-                        <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
+                        <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
                     </a>
                 </div>
                 <div class="fixed-lang d-flex align-items-center gap-2">
