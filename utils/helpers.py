@@ -4,6 +4,7 @@ import base64
 import requests
 from urllib.parse import quote
 from utils.logger import logger
+from urllib.parse import urljoin
 
 def extract_video_id(url):
     """شناسه ویدیوی یوتیوب رو از فرمت‌های مختلف لینک استخراج می‌کنه."""
