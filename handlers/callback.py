@@ -151,7 +151,7 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
             final_text += "⚠️ لینک مستقیم ساخته نشد (PUBLIC_BASE_URL ست نشده)."
         await bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=final_text)
         # اگه لینک ساخته شده، فایل نباید الان پاک بشه — پاکسازی رو به TTL خودش می‌سپریم
-        schedule_cleanup(context, None if direct_link else file_path, thumb_path)
+        schedule_cleanup(context, None if direct_link else file_path, None if direct_link else thumb_path)
         return
 
     try:
@@ -251,7 +251,7 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
     finally:
         # اگه لینک مستقیم ساخته شده، فایل رو الان پاک نکن — تا TTL خودش زنده
         # می‌مونه (پاکسازی دوره‌ای توی bot.py انجامش می‌ده).
-        schedule_cleanup(context, None if direct_link else file_path, thumb_path)
+        schedule_cleanup(context, None if direct_link else file_path, None if direct_link else thumb_path)
 
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
