@@ -1,6 +1,6 @@
-""" وب‌سرور FastAPI: مسیر دانلود مستقیم فایل‌ها + پنل مدیریت ساده.
-با uvicorn، همزمان با بات (توی همون event loop) اجرا می‌شه — به bot.py نگاه کن. """
+""" وب‌سرور FastAPI: مسیر دانلود مستقیم فایل‌ها + پنل مدیریت ساده. """
 import os
+import time
 from datetime import datetime
 from fastapi import Depends, FastAPI, HTTPException, Form
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -24,8 +24,8 @@ async def health():
 @app.get("/files/{token}")
 async def download_file(token: str):
     entry = store.get_link(token)
-    if not entry:
-        raise HTTPException(status_code=404, detail="لینک پیدا نشد یا منقضی شده")
+    if not entry or entry.get("is_deleted"):
+        raise HTTPException(status_code=404, detail="لینک پیدا نشد یا فایل از سرور حذف شده است")
     
     if not os.path.exists(entry["file_path"]):
         raise HTTPException(status_code=404, detail="فایل دیگه روی سرور موجود نیست")
@@ -40,7 +40,6 @@ async def download_file(token: str):
 
 @app.get("/thumbs/{token}")
 async def get_thumbnail(token: str):
-    """مسیر جدید برای نمایش عکس تامبنیل در پنل مدیریت"""
     entry = store.get_link(token)
     if entry and entry.get("thumb_path") and os.path.exists(entry["thumb_path"]):
         return FileResponse(entry["thumb_path"])
@@ -63,14 +62,19 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         dl_link = f"{base_url}/files/{token}" if base_url else f"/files/{token}"
         urldl_link = entry.get('urldl_link') or ''
         tg_link = entry.get('tg_link') or ''
+        is_deleted = entry.get('is_deleted', False)
+        is_del_js = 'true' if is_deleted else 'false'
         
-        # مقادیر امن برای جاوا اسکریپت
         safe_title = entry['title'].replace("'", "\\'").replace('"', '&quot;')
+        
+        # برچسب روی عکس
+        badge_html = '<span class="position-absolute top-0 start-0 m-2 badge bg-danger opacity-75" style="z-index:2;">حذف شده</span>' if is_deleted else '<span class="position-absolute top-0 start-0 m-2 badge bg-success opacity-75" style="z-index:2;">موجود</span>'
         
         cards_html += f'''
         <div class="col">
-            <div class="glass video-card h-100" onclick="showModal('{token}', '{safe_title}', '{dl_link}', '{urldl_link}', '{tg_link}')">
+            <div class="glass video-card h-100" onclick="showModal('{token}', '{safe_title}', '{dl_link}', '{urldl_link}', '{tg_link}', {entry['created_at']}, {entry['expires_at']}, {is_del_js})">
                 <div class="thumb-container">
+                    {badge_html}
                     <img src="/thumbs/{token}" alt="Thumbnail">
                     <div class="play-overlay"><i class="bi bi-play-circle-fill"></i></div>
                 </div>
@@ -81,7 +85,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             <span><i class="bi bi-hdd-fill me-1"></i> {format_size(entry['size_bytes']) or '-'}</span>
                             <span><i class="bi bi-cloud-arrow-down-fill me-1"></i> {entry['downloads']}</span>
                         </div>
-                        <div><i class="bi bi-hourglass-split me-1"></i> {_fmt_time(entry['expires_at'])}</div>
+                        <div><i class="bi bi-calendar3 me-1"></i> ساخت: {_fmt_time(entry['created_at'])}</div>
                     </div>
                 </div>
             </div>
@@ -93,7 +97,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         <div class="col-12 text-center my-5">
             <div class="glass p-5 d-inline-block" style="border-radius: 24px;">
                 <i class="bi bi-camera-reels text-muted" style="font-size: 4rem;"></i>
-                <h5 class="mt-3 text-muted">هیچ ویدیوی فعالی وجود ندارد</h5>
+                <h5 class="mt-3 text-muted">هیچ ویدیویی در آرشیو وجود ندارد</h5>
             </div>
         </div>'''
 
@@ -123,7 +127,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 position: relative;
             }}
 
-            /* Ambient Glowing Orbs */
             .bg-orb {{
                 position: fixed;
                 border-radius: 50%;
@@ -140,7 +143,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 100% {{ transform: translateY(-40px) scale(1.1); }}
             }}
 
-            /* Glassmorphism Core Class */
             .glass {{
                 background: var(--glass-bg);
                 backdrop-filter: var(--glass-blur);
@@ -156,7 +158,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 border-bottom: 1px solid var(--glass-border);
             }}
 
-            /* Video Cards */
             .video-card {{
                 cursor: pointer;
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
@@ -174,7 +175,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .thumb-container {{
                 position: relative;
                 width: 100%;
-                padding-top: 56.25%; /* 16:9 Aspect Ratio */
+                padding-top: 56.25%;
                 background: #000;
                 overflow: hidden;
                 border-bottom: 1px solid var(--glass-border);
@@ -187,10 +188,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 opacity: 0.85;
                 transition: opacity 0.3s, transform 0.5s;
             }}
-            .video-card:hover .thumb-container img {{
-                opacity: 1;
-                transform: scale(1.05);
-            }}
+            .video-card:hover .thumb-container img {{ opacity: 1; transform: scale(1.05); }}
             .play-overlay {{
                 position: absolute;
                 top: 50%; left: 50%;
@@ -200,10 +198,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 opacity: 0;
                 transition: opacity 0.3s, transform 0.3s;
             }}
-            .video-card:hover .play-overlay {{
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1.1);
-            }}
+            .video-card:hover .play-overlay {{ opacity: 1; transform: translate(-50%, -50%) scale(1.1); }}
 
             .video-title {{
                 font-size: 0.95rem;
@@ -215,13 +210,9 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 font-weight: 600;
                 color: #f1f5f9;
             }}
-            .video-meta {{
-                font-size: 0.8rem;
-                color: #94a3b8;
-            }}
+            .video-meta {{ font-size: 0.8rem; color: #94a3b8; }}
             .video-meta i {{ color: var(--accent-color); }}
 
-            /* Forms & Inputs */
             .form-check-label {{ color: #cbd5e1; }}
             .form-control, .input-group-text {{
                 background: rgba(0, 0, 0, 0.2) !important;
@@ -233,7 +224,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 border-color: var(--accent-color) !important;
             }}
 
-            /* Modal Styling */
             .modal-content {{
                 background: rgba(15, 23, 42, 0.85);
                 backdrop-filter: blur(24px);
@@ -245,7 +235,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .btn-close {{ filter: invert(1); opacity: 0.7; }}
             .btn-close:hover {{ opacity: 1; }}
 
-            /* Glass Buttons */
             .btn-glass-primary {{
                 background: rgba(56, 189, 248, 0.15);
                 border: 1px solid rgba(56, 189, 248, 0.4);
@@ -253,11 +242,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 transition: all 0.3s;
                 border-radius: 12px;
             }}
-            .btn-glass-primary:hover {{
-                background: rgba(56, 189, 248, 0.3);
-                color: #fff;
-                box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
-            }}
+            .btn-glass-primary:hover {{ background: rgba(56, 189, 248, 0.3); color: #fff; box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }}
             
             .btn-glass-danger {{
                 background: rgba(244, 63, 94, 0.15);
@@ -266,11 +251,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 transition: all 0.3s;
                 border-radius: 12px;
             }}
-            .btn-glass-danger:hover {{
-                background: rgba(244, 63, 94, 0.3);
-                color: #fff;
-                box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
-            }}
+            .btn-glass-danger:hover {{ background: rgba(244, 63, 94, 0.3); color: #fff; box-shadow: 0 0 15px rgba(244, 63, 94, 0.3); }}
 
             .copy-btn {{
                 background: rgba(255, 255, 255, 0.05) !important;
@@ -280,17 +261,9 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }}
             .copy-btn:hover {{ background: rgba(255, 255, 255, 0.15) !important; color: #fff !important; }}
 
-            /* Switch Toggles */
-            .form-switch .form-check-input {{
-                background-color: rgba(255, 255, 255, 0.2);
-                border-color: rgba(255, 255, 255, 0.1);
-            }}
-            .form-switch .form-check-input:checked {{
-                background-color: var(--accent-color);
-                border-color: var(--accent-color);
-            }}
+            .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); }}
+            .form-switch .form-check-input:checked {{ background-color: var(--accent-color); border-color: var(--accent-color); }}
 
-            /* Scrollbar */
             ::-webkit-scrollbar {{ width: 8px; }}
             ::-webkit-scrollbar-track {{ background: #0f172a; }}
             ::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, 0.2); border-radius: 10px; }}
@@ -299,21 +272,35 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     </head>
     <body>
 
-    <!-- Animated Background Elements -->
     <div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
     <div class="bg-orb orb-3"></div>
 
-    <nav class="navbar navbar-glass sticky-top py-3 mb-5">
+    <nav class="navbar navbar-glass sticky-top py-3 mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold text-white d-flex align-items-center" href="#">
                 <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
-                <span style="letter-spacing: 1px;">TELETUBE DASHBOARD</span>
+                <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
             </a>
         </div>
     </nav>
 
     <div class="container mb-5 pb-5">
+    
+        <!-- تایمر Railway -->
+        <div class="glass p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-center shadow-sm" style="border-radius: 16px;">
+            <div class="d-flex align-items-center mb-2 mb-md-0">
+                <i class="bi bi-rocket-takeoff fs-2 text-warning me-3"></i>
+                <div>
+                    <h6 class="mb-1 fw-bold text-white">زمان تا ریست شدن پلن Railway</h6>
+                    <small class="text-info" id="railwayTimer">در حال محاسبه زمان باقی‌مانده...</small>
+                </div>
+            </div>
+            <div class="spinner-grow text-warning opacity-75" role="status" style="width: 1.5rem; height: 1.5rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
         <!-- Settings Panel -->
         <div class="glass p-4 mb-5">
             <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> پیکربندی سیستم</h5>
@@ -346,9 +333,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             </form>
         </div>
 
-        <!-- Video Grid -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="m-0 text-white"><i class="bi bi-collection-play me-2 text-info"></i> آرشیو ویدیوها</h4>
+            <h4 class="m-0 text-white"><i class="bi bi-archive me-2 text-info"></i> آرشیو ویدیوها</h4>
         </div>
         
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
@@ -367,7 +353,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 <div class="modal-body px-4 pb-4 mt-3">
                     
                     <div class="mb-4">
-                        <label class="form-label text-info small fw-bold mb-2"><i class="bi bi-globe2"></i> لینک مستقیم سرور</label>
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-globe2"></i> لینک مستقیم سرور</label>
+                            <span id="modalDirectTime" class="badge"></span>
+                        </div>
                         <div class="input-group">
                             <input type="text" class="form-control text-start" id="modalDirect" readonly dir="ltr">
                             <button class="btn copy-btn px-3" type="button" onclick="copyToClipboard('modalDirect')"><i class="bi bi-clipboard"></i></button>
@@ -375,7 +364,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     </div>
 
                     <div class="mb-4" id="urldlBox">
-                        <label class="form-label text-info small fw-bold mb-2"><i class="bi bi-lightning-charge-fill text-warning"></i> ترافیک داخلی (urldl)</label>
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-lightning-charge-fill text-warning"></i> ترافیک داخلی (urldl)</label>
+                            <span id="modalUrldlTime" class="badge"></span>
+                        </div>
                         <div class="input-group">
                             <input type="text" class="form-control text-start" id="modalUrldl" readonly dir="ltr">
                             <button class="btn copy-btn px-3" type="button" onclick="copyToClipboard('modalUrldl')"><i class="bi bi-clipboard"></i></button>
@@ -383,7 +375,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     </div>
 
                     <div class="mb-5" id="tgBox">
-                        <label class="form-label text-info small fw-bold mb-2"><i class="bi bi-telegram text-primary"></i> پست ذخیره تلگرام</label>
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-telegram text-primary"></i> پست ذخیره تلگرام</label>
+                            <span id="modalTgTime" class="badge"></span>
+                        </div>
                         <div class="input-group">
                             <input type="text" class="form-control text-start" id="modalTg" readonly dir="ltr">
                             <button class="btn copy-btn px-3" type="button" onclick="copyToClipboard('modalTg')"><i class="bi bi-clipboard"></i></button>
@@ -392,7 +387,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
                     <form id="deleteForm" method="post" action="">
                         <button type="submit" class="btn btn-glass-danger w-100 py-2 fs-6">
-                            <i class="bi bi-trash3-fill me-2"></i> حذف کامل از سرور
+                            <i class="bi bi-trash3-fill me-2"></i> حذف فایل از سرور (باقی‌ماندن در آرشیو)
                         </button>
                     </form>
 
@@ -403,21 +398,71 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // اسکریپت زمان‌سنج Railway (ریست شدن در اولین روز ماه جدید میلادی)
+        function updateRailwayTimer() {{
+            const now = new Date();
+            let nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0));
+            const diff = nextMonth - now;
+            
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diff / 1000 / 60) % 60);
+            
+            document.getElementById('railwayTimer').innerText = `${{d}} روز و ${{h}} ساعت و ${{m}} دقیقه دیگر`;
+        }}
+        setInterval(updateRailwayTimer, 60000);
+        updateRailwayTimer();
+
+        // منطق نمایش پاپ‌آپ و زمان‌سنج‌های لینک‌ها
         const myModal = new bootstrap.Modal(document.getElementById('linkModal'));
 
-        function showModal(token, title, direct, urldl, tg) {{
+        function showModal(token, title, direct, urldl, tg, createdAt, expiresAt, isDeleted) {{
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalDirect').value = direct;
             
-            // مدیریت نمایش باکسی که لینک نداره
+            const nowSecs = Math.floor(Date.now() / 1000);
+
+            // 1. پردازش زمان لینک مستقیم (24 ساعته)
+            if (isDeleted || expiresAt < nowSecs) {{
+                document.getElementById('modalDirectTime').innerText = 'فایل از سرور حذف شده';
+                document.getElementById('modalDirectTime').className = 'badge bg-danger';
+            }} else {{
+                const diff = expiresAt - nowSecs;
+                const h = Math.floor(diff / 3600);
+                const m = Math.floor((diff % 3600) / 60);
+                document.getElementById('modalDirectTime').innerText = `${{h}} ساعت و ${{m}} دقیقه مانده`;
+                document.getElementById('modalDirectTime').className = 'badge bg-success';
+            }}
+
+            // 2. پردازش لینک urldl (7 روزه)
             const urldlBox = document.getElementById('urldlBox');
-            if(urldl && urldl !== 'None') {{ urldlBox.style.display = 'block'; document.getElementById('modalUrldl').value = urldl; }} 
-            else {{ urldlBox.style.display = 'none'; }}
+            if(urldl && urldl !== 'None') {{ 
+                urldlBox.style.display = 'block'; 
+                document.getElementById('modalUrldl').value = urldl; 
+                
+                const urldlExpire = createdAt + (7 * 24 * 3600); // 7 روز بعد از ساخت
+                if (urldlExpire < nowSecs) {{
+                    document.getElementById('modalUrldlTime').innerText = 'لینک منقضی شده';
+                    document.getElementById('modalUrldlTime').className = 'badge bg-danger';
+                }} else {{
+                    const diffU = urldlExpire - nowSecs;
+                    const dU = Math.floor(diffU / 86400);
+                    const hU = Math.floor((diffU % 86400) / 3600);
+                    document.getElementById('modalUrldlTime').innerText = `${{dU}} روز و ${{hU}} ساعت مانده`;
+                    document.getElementById('modalUrldlTime').className = 'badge bg-warning text-dark';
+                }}
+            }} else {{ urldlBox.style.display = 'none'; }}
 
+            // 3. پردازش پست تلگرام (دائمی)
             const tgBox = document.getElementById('tgBox');
-            if(tg && tg !== 'None') {{ tgBox.style.display = 'block'; document.getElementById('modalTg').value = tg; }} 
-            else {{ tgBox.style.display = 'none'; }}
+            if(tg && tg !== 'None') {{ 
+                tgBox.style.display = 'block'; 
+                document.getElementById('modalTg').value = tg; 
+                document.getElementById('modalTgTime').innerText = 'بدون انقضا (دائمی)';
+                document.getElementById('modalTgTime').className = 'badge bg-primary';
+            }} else {{ tgBox.style.display = 'none'; }}
 
+            // تنظیم دکمه حذف دستی
             document.getElementById('deleteForm').action = "/admin/links/" + token + "/delete";
             myModal.show();
         }}
@@ -427,7 +472,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             copyText.select();
             document.execCommand("copy");
             
-            // انیمیشن تیک کپی
             const btn = copyText.nextElementSibling;
             const originalIcon = btn.innerHTML;
             btn.innerHTML = '<i class="bi bi-check2-all text-success"></i>';
@@ -441,7 +485,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_dashboard(_user: str = Depends(require_admin)):
     settings = get_settings()
-    links = store.list_links()
+    # با قرار دادن include_expired=True فایل‌های منقضی شده هم در آرشیو نمایش داده میشن
+    links = store.list_links(include_expired=True)
     return _render_admin_page(settings, links, PUBLIC_BASE_URL)
 
 @app.post("/admin/settings")
