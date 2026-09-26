@@ -55,6 +55,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_direct = "checked" if settings.get("enable_direct_links", True) else ""
     checked_channel = "checked" if settings.get("enable_channel_delivery", True) else ""
     checked_urldl = "checked" if settings.get("enable_urldl", False) else ""
+    checked_anim = "checked" if settings.get("enable_animation", True) else ""
     
     expire_time_ms = settings.get("expire_time", time.time() + (30 * 24 * 3600)) * 1000
     
@@ -135,6 +136,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             body[dir="ltr"] {{ text-align: left; }}
             body[dir="rtl"] {{ text-align: right; }}
 
+            /* لایه‌بندی (جلوگیری از کلیک‌های ناخواسته روی سفینه‌ها) */
+            .main-content {{ position: relative; z-index: 10; }}
+
+            /* Fixed Navbar Positioning */
             .fixed-nav-container {{
                 position: relative; width: 100%; height: 40px;
                 display: flex; align-items: center; justify-content: space-between;
@@ -155,9 +160,40 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 50% {{ transform: scale(1.15) translateY(-2px); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }}
                 100% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
             }}
-            .rocket-animated {{
-                animation: rocket-pulse 2s infinite ease-in-out;
-                display: inline-block;
+            .rocket-animated {{ animation: rocket-pulse 2s infinite ease-in-out; display: inline-block; }}
+
+            /* CSS های جنگ فضایی (Easter Egg) */
+            .space-entity {{
+                position: fixed;
+                z-index: 1; /* بالاتر از بک‌گراند، پایین‌تر از کارت‌ها */
+                pointer-events: none;
+                opacity: 0;
+            }}
+            .ship-yt {{
+                font-size: 3.5rem; color: #ef4444; 
+                filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.8));
+                transition: left 1s ease-out, opacity 0.5s, transform 0.3s;
+                transform: rotate(90deg); /* حالت سفینه‌ای */
+            }}
+            .ship-tg {{
+                font-size: 3.5rem; color: #3b82f6; 
+                filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8));
+                transition: right 1s ease-out, opacity 0.5s, transform 0.5s;
+                transform: rotate(-90deg);
+            }}
+            .projectile {{
+                font-size: 1.5rem; color: #10b981; 
+                filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.9));
+                transition: left 0.6s linear, top 0.6s linear, opacity 0.2s;
+            }}
+            .glass-particle {{
+                position: fixed; width: 12px; height: 12px;
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(4px);
+                border: 1px solid rgba(255,255,255,0.4);
+                border-radius: 4px;
+                pointer-events: none; z-index: 2;
+                transition: transform 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.6s ease-out;
             }}
 
             .glass {{ background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }}
@@ -206,10 +242,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); cursor: pointer; float: none; margin-top: 0; width: 2.5em; height: 1.25em; }}
             .form-switch .form-check-input:checked {{ background-color: var(--accent-color); border-color: var(--accent-color); }}
 
-            ::-webkit-scrollbar {{ width: 8px; }}
-            ::-webkit-scrollbar-track {{ background: #0f172a; }}
-            ::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, 0.2); border-radius: 10px; }}
-            ::-webkit-scrollbar-thumb:hover {{ background: rgba(255, 255, 255, 0.4); }}
         </style>
     </head>
     <body>
@@ -218,122 +250,131 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     <div class="bg-orb orb-2"></div>
     <div class="bg-orb orb-3"></div>
 
-    <nav class="navbar navbar-glass sticky-top py-3 mb-4">
-        <div class="container fixed-nav-container">
-            <div class="fixed-brand">
-                <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
-                    <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
-                    <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
-                </a>
+    <!-- کانتینر اصلی داشبورد (z-index برای جلوگیری از تداخل با انیمیشن‌ها) -->
+    <div class="main-content">
+        <nav class="navbar navbar-glass sticky-top py-3 mb-4">
+            <div class="container fixed-nav-container">
+                <div class="fixed-brand">
+                    <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
+                        <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
+                        <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
+                    </a>
+                </div>
+                <div class="fixed-lang">
+                    <button id="langBtn" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="toggleLanguage()">FA</button>
+                </div>
             </div>
-            <div class="fixed-lang">
-                <button id="langBtn" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="toggleLanguage()">FA</button>
-            </div>
-        </div>
-    </nav>
+        </nav>
 
-    <div class="container mb-5 pb-5">
-    
-        <!-- تایمر Railway Widget -->
-        <div class="glass timer-widget p-4 mb-5 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-center">
-            <div class="d-flex align-items-center mb-3 mb-md-0">
-                <div class="p-3 rounded-circle me-3 ms-2" style="background: rgba(245, 158, 11, 0.1);">
-                    <!-- افکت اختصاصی پالس روی موشک -->
-                    <i class="bi bi-rocket-takeoff fs-2 text-warning rocket-animated"></i>
+        <div class="container mb-5 pb-5">
+        
+            <!-- تایمر Railway Widget -->
+            <div class="glass timer-widget p-4 mb-5 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <div class="d-flex align-items-center mb-3 mb-md-0">
+                    <div class="p-3 rounded-circle me-3 ms-2" style="background: rgba(245, 158, 11, 0.1);">
+                        <i class="bi bi-rocket-takeoff fs-2 text-warning rocket-animated"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1 fw-bold text-white" data-en="Server Plan Expiration" data-fa="زمان پایان پلن سرور">Server Plan Expiration</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="text-info fs-6" id="railwayTimer" style="letter-spacing: 0.5px;"></span>
+                        </div>
+                    </div>
                 </div>
                 <div>
-                    <h5 class="mb-1 fw-bold text-white" data-en="Server Plan Expiration" data-fa="زمان پایان پلن سرور">Server Plan Expiration</h5>
-                    <div class="d-flex align-items-center">
-                        <span class="text-info fs-6" id="railwayTimer" style="letter-spacing: 0.5px;"></span>
+                    <button type="button" class="btn btn-glass-primary px-4 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#planModal">
+                        <i class="bi bi-calendar2-check me-2"></i> <span data-en="Adjust Time" data-fa="تنظیم زمان">Adjust Time</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Settings Panel -->
+                <div class="col-lg-6 mb-4">
+                    <div class="glass p-4 h-100 d-flex flex-column">
+                        <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
+                        <form action="/admin/settings" method="post" id="settingsForm" class="flex-grow-1 d-flex flex-column">
+                            
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-10 mb-2">
+                                <label class="form-check-label fs-6 mb-0" for="c1" data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</label>
+                                <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                    <input class="form-check-input m-0" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-10 mb-2">
+                                <label class="form-check-label fs-6 mb-0" for="c2" data-en="Upload to Telegram Channel" data-fa="آپلود در کانال تلگرام">Upload to Telegram Channel</label>
+                                <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                    <input class="form-check-input m-0" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-10 mb-2">
+                                <label class="form-check-label fs-6 mb-0" for="c3" data-en="Internal urldl.ir Route" data-fa="مسیر داخلی urldl.ir">Internal urldl.ir Route</label>
+                                <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                    <input class="form-check-input m-0" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center py-3 mb-3">
+                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation (Easter Egg)" data-fa="انیمیشن نبرد فضایی (سورپرایز)">Spaceship Animation (Easter Egg)</label>
+                                <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                    <input class="form-check-input m-0" type="checkbox" name="enable_animation" id="c_anim" value="true" {checked_anim}>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
+                                <button type="button" class="btn water-btn w-100 py-3" id="holdBtn">
+                                    <div class="water-fill" id="waterFill"></div>
+                                    <span class="water-text">
+                                        <i class="bi bi-hdd-network me-2"></i> 
+                                        <span data-en="Hold to Apply Settings" data-fa="برای اعمال تنظیمات نگه دارید">Hold to Apply Settings</span>
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Bot Control Panel -->
+                <div class="col-lg-6 mb-4">
+                    <div class="glass p-4 h-100">
+                        <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
+                        <div class="d-flex flex-column justify-content-center align-items-center h-75 opacity-50">
+                            <i class="bi bi-tools fs-1 mb-2"></i>
+                            <span data-en="Features will be added soon..." data-fa="امکانات این بخش به زودی اضافه خواهد شد...">Features will be added soon...</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div>
-                <button type="button" class="btn btn-glass-primary px-4 py-2 rounded-pill" data-bs-toggle="modal" data-bs-target="#planModal">
-                    <i class="bi bi-calendar2-check me-2"></i> <span data-en="Adjust Time" data-fa="تنظیم زمان">Adjust Time</span>
-                </button>
-            </div>
-        </div>
 
-        <div class="row">
-            <!-- Settings Panel -->
-            <div class="col-lg-6 mb-4">
-                <div class="glass p-4 h-100 d-flex flex-column">
-                    <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
-                    <form action="/admin/settings" method="post" id="settingsForm" class="flex-grow-1 d-flex flex-column">
-                        
-                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-10 mb-2">
-                            <label class="form-check-label fs-6 mb-0" for="c1" data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</label>
-                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
-                                <input class="form-check-input m-0" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary border-opacity-10 mb-2">
-                            <label class="form-check-label fs-6 mb-0" for="c2" data-en="Upload to Telegram Channel" data-fa="آپلود در کانال تلگرام">Upload to Telegram Channel</label>
-                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
-                                <input class="form-check-input m-0" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center py-3 mb-3">
-                            <label class="form-check-label fs-6 mb-0" for="c3" data-en="Internal urldl.ir Route" data-fa="مسیر داخلی urldl.ir">Internal urldl.ir Route</label>
-                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
-                                <input class="form-check-input m-0" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
-                            <button type="button" class="btn water-btn w-100 py-3" id="holdBtn">
-                                <div class="water-fill" id="waterFill"></div>
-                                <span class="water-text">
-                                    <i class="bi bi-hdd-network me-2"></i> 
-                                    <span data-en="Hold to Apply Settings" data-fa="برای اعمال تنظیمات نگه دارید">Hold to Apply Settings</span>
-                                </span>
-                            </button>
-                        </div>
-                    </form>
+            <div class="d-flex justify-content-between align-items-center mt-3 mb-4 border-bottom border-secondary border-opacity-25 pb-3">
+                <h4 class="m-0 text-white"><i class="bi bi-archive me-2 text-info"></i> <span data-en="Video Archive" data-fa="آرشیو ویدیوها">Video Archive</span></h4>
+                
+                <div class="dropdown">
+                    <button class="btn btn-outline-info dropdown-toggle" style="border-radius: 12px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-filter"></i> <span id="currentFilterLabel" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark glass-dropdown shadow-lg">
+                        <li><a class="dropdown-item" href="#" onclick="filterVideos('all', this)" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterVideos('today', this)" data-en="Today" data-fa="امروز">Today</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterVideos('week', this)" data-en="This Week" data-fa="این هفته">This Week</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="filterVideos('month', this)" data-en="This Month" data-fa="این ماه">This Month</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="filterVideos('deleted', this)" data-en="Deleted" data-fa="حذف شده‌ها">Deleted</a></li>
+                    </ul>
                 </div>
             </div>
-
-            <!-- Bot Control Panel -->
-            <div class="col-lg-6 mb-4">
-                <div class="glass p-4 h-100">
-                    <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
-                    <div class="d-flex flex-column justify-content-center align-items-center h-75 opacity-50">
-                        <i class="bi bi-tools fs-1 mb-2"></i>
-                        <span data-en="Features will be added soon..." data-fa="امکانات این بخش به زودی اضافه خواهد شد...">Features will be added soon...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center mt-3 mb-4 border-bottom border-secondary border-opacity-25 pb-3">
-            <h4 class="m-0 text-white"><i class="bi bi-archive me-2 text-info"></i> <span data-en="Video Archive" data-fa="آرشیو ویدیوها">Video Archive</span></h4>
             
-            <div class="dropdown">
-                <button class="btn btn-outline-info dropdown-toggle" style="border-radius: 12px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-filter"></i> <span id="currentFilterLabel" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark glass-dropdown shadow-lg">
-                    <li><a class="dropdown-item" href="#" onclick="filterVideos('all', this)" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="filterVideos('today', this)" data-en="Today" data-fa="امروز">Today</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="filterVideos('week', this)" data-en="This Week" data-fa="این هفته">This Week</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="filterVideos('month', this)" data-en="This Month" data-fa="این ماه">This Month</a></li>
-                    <li><hr class="dropdown-divider border-secondary"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="filterVideos('deleted', this)" data-en="Deleted" data-fa="حذف شده‌ها">Deleted</a></li>
-                </ul>
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="videoGrid">
+                {cards_html}
             </div>
         </div>
-        
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="videoGrid">
-            {cards_html}
-        </div>
-    </div>
+    </div> <!-- پایان کانتینر اصلی -->
 
     <!-- Modal for Adjusting Plan Time -->
     <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-dialog modal-dialog-centered modal-sm" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
                 <div class="modal-header border-0 pb-0 mt-2 px-4">
                     <h6 class="modal-title fw-bold text-white w-100 pe-3" dir="auto">
@@ -343,7 +384,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 pb-4 mt-3">
-                    <!-- دکمه‌های آماده (Quick Presets) -->
                     <div class="mb-4">
                         <label class="form-label text-info small fw-bold mb-2" data-en="Quick Presets" data-fa="گزینه‌های سریع">Quick Presets</label>
                         <div class="d-flex flex-wrap gap-2">
@@ -381,7 +421,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <!-- Modal for Video Links -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
                 <div class="modal-header border-0 pb-0 mt-2 px-4">
                     <h5 class="modal-title fw-bold text-truncate w-100 pe-3" id="modalTitle" dir="auto">Video Title</h5>
@@ -435,7 +475,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Custom Timer Logic (اجرای آنی و بدون تاخیر)
+        // Custom Timer Logic (اجرای آنی)
         const expireTimeMs = {expire_time_ms};
         let currentLang = localStorage.getItem('teletube_lang') || 'en';
 
@@ -461,7 +501,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             document.getElementById('railwayTimer').innerText = msg;
         }}
         
-        // اجرای سریع در لحظه لود
         updateRailwayTimer();
         setInterval(updateRailwayTimer, 60000);
 
@@ -492,31 +531,114 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         
         applyLanguage();
 
-        // سابمیت سریع تنظیم زمان از طریق دکمه‌های پاپ‌آپ
+        // ----------------------------------------------------
+        // انیمیشن سفینه فضایی (YouTube vs Telegram) 🚀
+        // ----------------------------------------------------
+        function triggerSpaceBattle() {{
+            const animCheckbox = document.getElementById('c_anim');
+            if (!animCheckbox || !animCheckbox.checked) return;
+            
+            const yt = document.createElement('i');
+            yt.className = 'bi bi-youtube space-entity ship-yt';
+            yt.style.top = (20 + Math.random() * 40) + '%';
+            yt.style.left = '-100px';
+            document.body.appendChild(yt);
+            
+            const tg = document.createElement('i');
+            tg.className = 'bi bi-telegram space-entity ship-tg';
+            tg.style.top = (20 + Math.random() * 40) + '%';
+            tg.style.right = '-100px';
+            document.body.appendChild(tg);
+            
+            // ورود سفینه‌ها
+            setTimeout(() => {{
+                yt.style.opacity = '1';
+                yt.style.left = '10%';
+                tg.style.opacity = '1';
+                tg.style.right = '10%';
+            }}, 100);
+            
+            // شلیک
+            setTimeout(() => {{
+                const proj = document.createElement('i');
+                proj.className = 'bi bi-cloud-arrow-down-fill space-entity projectile';
+                
+                const ytRect = yt.getBoundingClientRect();
+                const tgRect = tg.getBoundingClientRect();
+                
+                proj.style.top = (ytRect.top + 10) + 'px';
+                proj.style.left = ytRect.right + 'px';
+                proj.style.opacity = '1';
+                document.body.appendChild(proj);
+                
+                // حرکت موشک به سمت تلگرام
+                setTimeout(() => {{
+                    proj.style.top = (tgRect.top + 10) + 'px';
+                    proj.style.left = tgRect.left + 'px';
+                }}, 50);
+                
+                // برخورد و انفجار شیشه‌ای
+                setTimeout(() => {{
+                    proj.remove();
+                    createGlassExplosion(tgRect.left + 20, tgRect.top + 20);
+                    
+                    tg.style.transform = 'scale(0) rotate(180deg)';
+                    tg.style.opacity = '0';
+                    yt.style.transform = 'rotate(90deg) translateX(-50px)';
+                    yt.style.opacity = '0';
+                    
+                    setTimeout(() => {{ yt.remove(); tg.remove(); }}, 1000);
+                }}, 650);
+                
+            }}, 1500);
+        }}
+
+        function createGlassExplosion(x, y) {{
+            for(let i=0; i<8; i++) {{
+                const p = document.createElement('div');
+                p.className = 'glass-particle';
+                p.style.left = x + 'px';
+                p.style.top = y + 'px';
+                document.body.appendChild(p);
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 40 + Math.random() * 80;
+                
+                setTimeout(() => {{
+                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg)`;
+                    p.style.opacity = '0';
+                }}, 20);
+                
+                setTimeout(() => p.remove(), 700);
+            }}
+        }}
+
+        // اولین نبرد 3 ثانیه بعد از لود صفحه (اگه دکمه روشن باشه)
+        setTimeout(triggerSpaceBattle, 3000);
+        // نبردهای بعدی به صورت رندوم هر چند ثانیه
+        setInterval(() => {{
+            if (Math.random() > 0.4) triggerSpaceBattle();
+        }}, 12000);
+
+
+        // بقیه منطق‌ها (سابمیت واتر باتل، فیلتر ویدیو و مُدال)
         function submitQuickPlan(days, hours) {{
             document.getElementById('selectDays').value = days;
             document.getElementById('selectHours').value = hours;
             document.getElementById('planForm').submit();
         }}
 
-        // Water Bottle Hold Logic
         const holdBtn = document.getElementById('holdBtn');
         const waterFill = document.getElementById('waterFill');
         const settingsForm = document.getElementById('settingsForm');
-        let holdTimer;
-        let progress = 0;
-        let isHolding = false;
+        let holdTimer, progress = 0, isHolding = false;
 
         function startHold(e) {{
             if(e.cancelable) e.preventDefault();
-            isHolding = true;
-            progress = 0;
-            waterFill.style.height = '0%';
-            
+            isHolding = true; progress = 0; waterFill.style.height = '0%';
             holdTimer = setInterval(() => {{
                 progress += 2;
                 waterFill.style.height = progress + '%';
-                
                 if (progress >= 100) {{
                     clearInterval(holdTimer);
                     waterFill.style.background = '#10b981';
@@ -527,12 +649,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         }}
 
         function stopHold() {{
-            isHolding = false;
-            clearInterval(holdTimer);
-            if (progress < 100) {{
-                progress = 0;
-                waterFill.style.height = '0%';
-            }}
+            isHolding = false; clearInterval(holdTimer);
+            if (progress < 100) {{ progress = 0; waterFill.style.height = '0%'; }}
         }}
 
         holdBtn.addEventListener('mousedown', startHold);
@@ -541,7 +659,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
         holdBtn.addEventListener('touchend', stopHold);
 
-        // Filter Logic
         function filterVideos(type, element) {{
             document.getElementById('currentFilterLabel').innerText = element.getAttribute(`data-${{currentLang}}`);
             document.getElementById('currentFilterLabel').setAttribute('data-en', element.getAttribute('data-en'));
@@ -567,7 +684,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }});
         }}
 
-        // Modal Logic
         const myModal = new bootstrap.Modal(document.getElementById('linkModal'));
 
         function showModal(token, title, direct, urldl, tg, createdAt, expiresAt, isDeleted) {{
@@ -649,17 +765,21 @@ async def admin_update_settings(
     enable_channel_delivery: bool = Form(False),
     enable_nimbaha: bool = Form(False),
     enable_urldl: bool = Form(False),
+    enable_animation: bool = Form(False),
     _user: str = Depends(require_admin),
 ):
     if not enable_direct_links and not enable_channel_delivery:
         enable_channel_delivery = True
 
-    update_settings({
+    new_settings = {
         "enable_direct_links": enable_direct_links,
         "enable_channel_delivery": enable_channel_delivery,
         "enable_nimbaha": enable_nimbaha,
         "enable_urldl": enable_urldl,
-    })
+        "enable_animation": enable_animation,
+    }
+
+    update_settings(new_settings)
     
     return RedirectResponse(url="/admin", status_code=303)
 
