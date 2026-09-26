@@ -297,7 +297,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             </div>
                             
                             <div class="d-flex justify-content-between align-items-center py-3 mb-3">
-                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation (Easter Egg)" data-fa="انیمیشن نبرد فضایی (سورپرایز)">Spaceship Animation (Easter Egg)</label>
+                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation " data-fa="انیمیشن نبرد فضایی ">Spaceship Animation (Easter Egg)</label>
                                 <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
                                     <input class="form-check-input m-0" type="checkbox" name="enable_animation" id="c_anim" value="true" {checked_anim}>
                                 </div>
