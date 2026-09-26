@@ -55,7 +55,12 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_direct = "checked" if settings.get("enable_direct_links", True) else ""
     checked_channel = "checked" if settings.get("enable_channel_delivery", True) else ""
     checked_urldl = "checked" if settings.get("enable_urldl", False) else ""
-    install_time = settings.get("install_time", time.time())
+    
+    # گرفتن زمان انقضای سرور (پیش‌فرض 30 روز بعد از نصب)
+    expire_time_ms = settings.get("expire_time", time.time() + (30 * 24 * 3600)) * 1000
+    
+    # مرتب‌سازی ویدیوها: موجودها اول (بر اساس تاریخ جدید به قدیم)، حذف‌شده‌ها در انتها
+    links.sort(key=lambda x: (x.get('is_deleted', False), -x['created_at']))
     
     cards_html = ""
     for entry in links:
@@ -68,16 +73,15 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         
         safe_title = entry['title'].replace("'", "\\'").replace('"', '&quot;')
         
-        # برچسب و تصویر
         if is_deleted:
-            badge_html = '<span class="position-absolute top-0 start-0 m-2 badge bg-danger opacity-75" style="z-index:2;" data-fa="حذف شده" data-en="Deleted">حذف شده</span>'
+            badge_html = '<span class="position-absolute top-0 start-0 m-2 badge bg-danger opacity-75" style="z-index:2;" data-en="Deleted" data-fa="حذف شده">Deleted</span>'
             thumb_html = '<div class="w-100 h-100 d-flex justify-content-center align-items-center" style="background: rgba(0,0,0,0.6); position:absolute; top:0; left:0;"><i class="bi bi-trash3 text-secondary" style="font-size: 3rem;"></i></div>'
         else:
-            badge_html = '<span class="position-absolute top-0 start-0 m-2 badge bg-success opacity-75" style="z-index:2;" data-fa="موجود" data-en="Active">موجود</span>'
+            badge_html = '<span class="position-absolute top-0 start-0 m-2 badge bg-success opacity-75" style="z-index:2;" data-en="Active" data-fa="موجود">Active</span>'
             thumb_html = f'<img src="/thumbs/{token}" alt="">'
         
         cards_html += f'''
-        <div class="col">
+        <div class="col video-col" data-created="{entry['created_at']}" data-deleted="{is_del_js}">
             <div class="glass video-card h-100" onclick="showModal('{token}', '{safe_title}', '{dl_link}', '{urldl_link}', '{tg_link}', {entry['created_at']}, {entry['expires_at']}, {is_del_js})">
                 <div class="thumb-container">
                     {badge_html}
@@ -91,7 +95,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             <span><i class="bi bi-hdd-fill me-1"></i> {format_size(entry['size_bytes']) or '-'}</span>
                             <span><i class="bi bi-cloud-arrow-down-fill me-1"></i> {entry['downloads']}</span>
                         </div>
-                        <div><i class="bi bi-calendar3 me-1"></i> <span data-fa="ساخت:" data-en="Created:">ساخت:</span> {_fmt_time(entry['created_at'])}</div>
+                        <div><i class="bi bi-calendar3 me-1"></i> <span data-en="Created:" data-fa="ساخت:">Created:</span> {_fmt_time(entry['created_at'])}</div>
                     </div>
                 </div>
             </div>
@@ -103,18 +107,18 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         <div class="col-12 text-center my-5">
             <div class="glass p-5 d-inline-block" style="border-radius: 24px;">
                 <i class="bi bi-camera-reels text-muted" style="font-size: 4rem;"></i>
-                <h5 class="mt-3 text-muted" data-fa="هیچ ویدیویی در آرشیو وجود ندارد" data-en="No videos in archive">هیچ ویدیویی در آرشیو وجود ندارد</h5>
+                <h5 class="mt-3 text-muted" data-en="No videos in archive" data-fa="هیچ ویدیویی در آرشیو وجود ندارد">No videos in archive</h5>
             </div>
         </div>'''
 
     return f"""
     <!DOCTYPE html>
-    <html lang="fa" dir="rtl">
+    <html lang="en" dir="ltr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>TeleTube Dashboard</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet" id="bs-css">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" id="bs-css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
             :root {{
@@ -123,19 +127,20 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 --glass-blur: blur(16px);
                 --accent-color: #38bdf8;
             }}
-            
             body {{
-                background-color: #0f172a;
-                color: #f8fafc;
-                font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-                min-height: 100vh;
-                overflow-x: hidden;
-                position: relative;
-                transition: direction 0.3s;
+                background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+                min-height: 100vh; overflow-x: hidden; position: relative; transition: direction 0.3s;
             }}
-
             body[dir="ltr"] {{ text-align: left; }}
             body[dir="rtl"] {{ text-align: right; }}
+
+            /* Fixed Navbar Positioning */
+            .fixed-nav-container {{
+                position: relative; width: 100%; height: 40px;
+                display: flex; align-items: center;
+            }}
+            .fixed-brand {{ position: absolute; right: 15px; direction: ltr; }}
+            .fixed-lang {{ position: absolute; left: 15px; }}
 
             .bg-orb {{ position: fixed; border-radius: 50%; filter: blur(100px); z-index: -1; animation: float 12s infinite ease-in-out alternate; }}
             .orb-1 {{ width: 400px; height: 400px; background: rgba(99, 102, 241, 0.3); top: -10%; left: -10%; }}
@@ -144,20 +149,13 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
             @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
 
-            .glass {{
-                background: var(--glass-bg);
-                backdrop-filter: var(--glass-blur);
-                -webkit-backdrop-filter: var(--glass-blur);
-                border: 1px solid var(--glass-border);
-                border-radius: 20px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            }}
-
+            .glass {{ background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }}
             .navbar-glass {{ background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); }}
+            .glass-dropdown {{ background: rgba(15, 23, 42, 0.9) !important; backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 12px; }}
+            .glass-dropdown .dropdown-item:hover {{ background: rgba(56, 189, 248, 0.2); color: #fff; }}
 
             .video-card {{ cursor: pointer; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s; display: flex; flex-direction: column; position: relative; overflow: hidden; }}
             .video-card:hover {{ transform: translateY(-8px); background: rgba(30, 41, 59, 0.6); border-color: rgba(56, 189, 248, 0.3); }}
-            
             .thumb-container {{ position: relative; width: 100%; padding-top: 56.25%; background: #000; overflow: hidden; border-bottom: 1px solid var(--glass-border); }}
             .thumb-container img {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; transition: opacity 0.3s, transform 0.5s; }}
             .video-card:hover .thumb-container img {{ opacity: 1; transform: scale(1.05); }}
@@ -169,7 +167,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .video-meta {{ font-size: 0.8rem; color: #94a3b8; }}
             .video-meta i {{ color: var(--accent-color); }}
 
-            .form-check-label {{ color: #cbd5e1; }}
             .form-control, .input-group-text {{ background: rgba(0, 0, 0, 0.2) !important; border: 1px solid var(--glass-border) !important; color: #f8fafc !important; }}
             .form-control:focus {{ box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.2) !important; border-color: var(--accent-color) !important; }}
 
@@ -203,26 +200,28 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     <div class="bg-orb orb-3"></div>
 
     <nav class="navbar navbar-glass sticky-top py-3 mb-4">
-        <div class="container d-flex justify-content-between">
-            <a class="navbar-brand fw-bold text-white d-flex align-items-center" href="#">
-                <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
-                <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
-            </a>
-            <div>
-                <button id="langBtn" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="toggleLanguage()">EN</button>
+        <div class="container fixed-nav-container">
+            <div class="fixed-brand">
+                <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
+                    <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
+                    <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light text-muted">DASHBOARD</span></span>
+                </a>
+            </div>
+            <div class="fixed-lang">
+                <button id="langBtn" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="toggleLanguage()">FA</button>
             </div>
         </div>
     </nav>
 
     <div class="container mb-5 pb-5">
     
-        <!-- تایمر Railway (30 روزه) -->
+        <!-- تایمر Railway -->
         <div class="glass p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-center shadow-sm" style="border-radius: 16px;">
             <div class="d-flex align-items-center mb-2 mb-md-0">
-                <i class="bi bi-rocket-takeoff fs-2 text-warning me-3"></i>
+                <i class="bi bi-rocket-takeoff fs-2 text-warning me-3" style="margin-left: 1rem;"></i>
                 <div>
-                    <h6 class="mb-1 fw-bold text-white" data-fa="زمان پایان پلن سرور (۳۰ روزه)" data-en="Server Plan Expiration (30 Days)">زمان پایان پلن سرور (۳۰ روزه)</h6>
-                    <small class="text-info" id="railwayTimer" data-fa="در حال محاسبه..." data-en="Calculating...">در حال محاسبه...</small>
+                    <h6 class="mb-1 fw-bold text-white" data-en="Server Plan Expiration" data-fa="زمان پایان پلن سرور">Server Plan Expiration</h6>
+                    <small class="text-info" id="railwayTimer" data-en="Calculating..." data-fa="در حال محاسبه...">Calculating...</small>
                 </div>
             </div>
             <div class="spinner-grow text-warning opacity-75" role="status" style="width: 1.5rem; height: 1.5rem;">
@@ -234,25 +233,30 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             <!-- Settings Panel -->
             <div class="col-lg-6 mb-4">
                 <div class="glass p-4 h-100">
-                    <h5 class="mb-4 text-white" data-fa="پیکربندی سیستم" data-en="System Configuration"><i class="bi bi-sliders text-info me-2"></i> پیکربندی سیستم</h5>
+                    <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
                     <form action="/admin/settings" method="post">
                         <div class="d-flex flex-column gap-3">
                             <div class="form-check form-switch fs-5">
-                                <input class="form-check-input" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
-                                <label class="form-check-label fs-6 mt-1 mx-2" for="c1" data-fa="لینک مستقیم سرور" data-en="Direct Server Link">لینک مستقیم سرور</label>
+                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_direct_links" id="c1" value="true" {checked_direct}>
+                                <label class="form-check-label fs-6 mt-1" for="c1" data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</label>
                             </div>
                             <div class="form-check form-switch fs-5">
-                                <input class="form-check-input" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
-                                <label class="form-check-label fs-6 mt-1 mx-2" for="c2" data-fa="آپلود در کانال تلگرام" data-en="Upload to Telegram Channel">آپلود در کانال تلگرام</label>
+                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_channel_delivery" id="c2" value="true" {checked_channel}>
+                                <label class="form-check-label fs-6 mt-1" for="c2" data-en="Upload to Telegram Channel" data-fa="آپلود در کانال تلگرام">Upload to Telegram Channel</label>
                             </div>
                             <div class="form-check form-switch fs-5">
-                                <input class="form-check-input" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
-                                <label class="form-check-label fs-6 mt-1 mx-2" for="c3" data-fa="مسیر داخلی urldl.ir" data-en="Internal urldl.ir Route">مسیر داخلی urldl.ir</label>
+                                <input class="form-check-input ms-0 me-3" type="checkbox" name="enable_urldl" id="c3" value="true" {checked_urldl}>
+                                <label class="form-check-label fs-6 mt-1" for="c3" data-en="Internal urldl.ir Route" data-fa="مسیر داخلی urldl.ir">Internal urldl.ir Route</label>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <label class="form-label text-info small mb-1" data-en="Set Plan Remaining Days (Leave empty to keep current)" data-fa="تنظیم دستی روزهای باقی‌مانده پلن (خالی بگذارید تا تغییر نکند)">Set Plan Remaining Days (Leave empty to keep current)</label>
+                                <input type="number" class="form-control" name="plan_days" placeholder="30">
                             </div>
                         </div>
                         <div class="mt-4 pt-3 border-top border-secondary border-opacity-25">
                             <button type="submit" class="btn btn-glass-primary px-4 py-2 w-100">
-                                <i class="bi bi-hdd-network me-2"></i> <span data-fa="اعمال تنظیمات" data-en="Apply Settings">اعمال تنظیمات</span>
+                                <i class="bi bi-hdd-network me-2"></i> <span data-en="Apply Settings" data-fa="اعمال تنظیمات">Apply Settings</span>
                             </button>
                         </div>
                     </form>
@@ -262,40 +266,52 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             <!-- Bot Control Panel -->
             <div class="col-lg-6 mb-4">
                 <div class="glass p-4 h-100">
-                    <h5 class="mb-4 text-white" data-fa="کنترل ربات تلگرام" data-en="Telegram Bot Control"><i class="bi bi-robot text-primary me-2"></i> کنترل ربات تلگرام</h5>
-                    
-                    <!-- محتوای خالی برای آینده -->
+                    <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
                     <div class="d-flex flex-column justify-content-center align-items-center h-75 opacity-50">
                         <i class="bi bi-tools fs-1 mb-2"></i>
-                        <span data-fa="امکانات این بخش به زودی اضافه خواهد شد..." data-en="Features will be added soon...">امکانات این بخش به زودی اضافه خواهد شد...</span>
+                        <span data-en="Features will be added soon..." data-fa="امکانات این بخش به زودی اضافه خواهد شد...">Features will be added soon...</span>
                     </div>
-
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mt-3 mb-4 border-bottom border-secondary border-opacity-25 pb-2">
-            <h4 class="m-0 text-white" data-fa="آرشیو ویدیوها" data-en="Video Archive"><i class="bi bi-archive me-2 text-info"></i> آرشیو ویدیوها</h4>
+        <div class="d-flex justify-content-between align-items-center mt-3 mb-4 border-bottom border-secondary border-opacity-25 pb-3">
+            <h4 class="m-0 text-white"><i class="bi bi-archive me-2 text-info"></i> <span data-en="Video Archive" data-fa="آرشیو ویدیوها">Video Archive</span></h4>
+            
+            <!-- Filter Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-glass-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter"></i> <span id="currentFilterLabel" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark glass-dropdown shadow-lg">
+                    <li><a class="dropdown-item" href="#" onclick="filterVideos('all', this)" data-en="All Downloads" data-fa="همه دانلودها">All Downloads</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterVideos('today', this)" data-en="Today" data-fa="امروز">Today</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterVideos('week', this)" data-en="This Week" data-fa="این هفته">This Week</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="filterVideos('month', this)" data-en="This Month" data-fa="این ماه">This Month</a></li>
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="filterVideos('deleted', this)" data-en="Deleted" data-fa="حذف شده‌ها">Deleted</a></li>
+                </ul>
+            </div>
         </div>
         
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="videoGrid">
             {cards_html}
         </div>
     </div>
 
-    <!-- Modal (پاپ‌آپ لینک‌ها) -->
+    <!-- Modal -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg">
                 <div class="modal-header border-0 pb-0 mt-2 px-4">
-                    <h5 class="modal-title fw-bold text-truncate w-100 pe-3" id="modalTitle" dir="auto">عنوان ویدیو</h5>
+                    <h5 class="modal-title fw-bold text-truncate w-100 pe-3" id="modalTitle" dir="auto">Video Title</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 pb-4 mt-3">
                     
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-end mb-2">
-                            <label class="form-label text-info small fw-bold mb-0" data-fa="لینک مستقیم سرور" data-en="Direct Server Link"><i class="bi bi-globe2"></i> لینک مستقیم سرور</label>
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-globe2"></i> <span data-en="Direct Server Link" data-fa="لینک مستقیم سرور">Direct Server Link</span></label>
                             <span id="modalDirectTime" class="badge"></span>
                         </div>
                         <div class="input-group">
@@ -306,7 +322,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
                     <div class="mb-4" id="urldlBox">
                         <div class="d-flex justify-content-between align-items-end mb-2">
-                            <label class="form-label text-info small fw-bold mb-0" data-fa="ترافیک داخلی (urldl)" data-en="Internal Traffic (urldl)"><i class="bi bi-lightning-charge-fill text-warning"></i> ترافیک داخلی (urldl)</label>
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-lightning-charge-fill text-warning"></i> <span data-en="Internal Traffic (urldl)" data-fa="ترافیک داخلی (urldl)">Internal Traffic (urldl)</span></label>
                             <span id="modalUrldlTime" class="badge"></span>
                         </div>
                         <div class="input-group">
@@ -317,7 +333,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
                     <div class="mb-5" id="tgBox">
                         <div class="d-flex justify-content-between align-items-end mb-2">
-                            <label class="form-label text-info small fw-bold mb-0" data-fa="پست ذخیره تلگرام" data-en="Telegram Post"><i class="bi bi-telegram text-primary"></i> پست ذخیره تلگرام</label>
+                            <label class="form-label text-info small fw-bold mb-0"><i class="bi bi-telegram text-primary"></i> <span data-en="Telegram Post" data-fa="پست ذخیره تلگرام">Telegram Post</span></label>
                             <span id="modalTgTime" class="badge"></span>
                         </div>
                         <div class="input-group">
@@ -328,7 +344,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
                     <form id="deleteForm" method="post" action="">
                         <button type="submit" class="btn btn-glass-danger w-100 py-2 fs-6">
-                            <i class="bi bi-trash3-fill me-2"></i> <span data-fa="حذف فایل از سرور (باقی‌ماندن در آرشیو)" data-en="Delete File (Keep in Archive)">حذف فایل از سرور (باقی‌ماندن در آرشیو)</span>
+                            <i class="bi bi-trash3-fill me-2"></i> <span data-en="Delete File (Keep in Archive)" data-fa="حذف فایل از سرور (باقی‌ماندن در آرشیو)">Delete File (Keep in Archive)</span>
                         </button>
                     </form>
 
@@ -339,15 +355,14 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Language Toggle System
-        let currentLang = 'fa';
+        // Language Toggle System (Default EN)
+        let currentLang = 'en';
         
         function toggleLanguage() {{
-            currentLang = currentLang === 'fa' ? 'en' : 'fa';
-            document.body.setAttribute('dir', currentLang === 'fa' ? 'rtl' : 'ltr');
-            document.getElementById('langBtn').innerText = currentLang === 'fa' ? 'EN' : 'FA';
+            currentLang = currentLang === 'en' ? 'fa' : 'en';
+            document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
+            document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
             
-            // Switch CSS
             const bsLink = document.getElementById('bs-css');
             if(currentLang === 'fa') {{
                 bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css";
@@ -355,15 +370,16 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css";
             }}
 
-            // Update all elements with data attributes
-            document.querySelectorAll('[data-fa]').forEach(el => {{
+            document.querySelectorAll('[data-en]').forEach(el => {{
                 el.innerText = el.getAttribute(`data-${{currentLang}}`);
             }});
+            
+            // Update timer text without full refresh
+            updateRailwayTimer();
         }}
 
-        // 30 Days Railway Timer Logic
-        const installTimeMs = {install_time} * 1000;
-        const expireTimeMs = installTimeMs + (30 * 24 * 60 * 60 * 1000);
+        // Custom Timer Logic
+        const expireTimeMs = {expire_time_ms};
 
         function updateRailwayTimer() {{
             const now = Date.now();
@@ -387,7 +403,34 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             document.getElementById('railwayTimer').innerText = msg;
         }}
         setInterval(updateRailwayTimer, 60000);
-        updateRailwayTimer(); // Run once immediately
+        updateRailwayTimer();
+
+        // Video Filter Logic
+        function filterVideos(type, element) {{
+            // Update Dropdown Label
+            document.getElementById('currentFilterLabel').innerText = element.getAttribute(`data-${{currentLang}}`);
+            document.getElementById('currentFilterLabel').setAttribute('data-en', element.getAttribute('data-en'));
+            document.getElementById('currentFilterLabel').setAttribute('data-fa', element.getAttribute('data-fa'));
+            
+            const nowSecs = Date.now() / 1000;
+            const cols = document.querySelectorAll('.video-col');
+            
+            cols.forEach(col => {{
+                const created = parseFloat(col.getAttribute('data-created'));
+                const isDeleted = col.getAttribute('data-deleted') === 'true';
+                let show = false;
+
+                if (type === 'all') {{ show = true; }} 
+                else if (type === 'deleted') {{ show = isDeleted; }} 
+                else if (!isDeleted) {{
+                    const diff = nowSecs - created;
+                    if (type === 'today' && diff <= 86400) show = true;
+                    if (type === 'week' && diff <= 7 * 86400) show = true;
+                    if (type === 'month' && diff <= 30 * 86400) show = true;
+                }}
+                col.style.display = show ? 'block' : 'none';
+            }});
+        }}
 
         // Modal Logic
         const myModal = new bootstrap.Modal(document.getElementById('linkModal'));
@@ -398,7 +441,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             
             const nowSecs = Math.floor(Date.now() / 1000);
 
-            // 1. Direct Link (24 hours)
             if (isDeleted || expiresAt < nowSecs) {{
                 document.getElementById('modalDirectTime').innerText = currentLang === 'fa' ? 'حذف شده' : 'Deleted';
                 document.getElementById('modalDirectTime').className = 'badge bg-danger';
@@ -410,7 +452,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 document.getElementById('modalDirectTime').className = 'badge bg-success';
             }}
 
-            // 2. urldl Link (7 days)
             const urldlBox = document.getElementById('urldlBox');
             if(urldl && urldl !== 'None') {{ 
                 urldlBox.style.display = 'block'; 
@@ -429,7 +470,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 }}
             }} else {{ urldlBox.style.display = 'none'; }}
 
-            // 3. Telegram Post (Permanent)
             const tgBox = document.getElementById('tgBox');
             if(tg && tg !== 'None') {{ 
                 tgBox.style.display = 'block'; 
@@ -461,10 +501,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 async def admin_dashboard(_user: str = Depends(require_admin)):
     settings = get_settings()
     
-    # ثبت زمان اولین اجرای پنل (به عنوان تاریخ شروع پلن 30 روزه سرور)
-    if "install_time" not in settings:
-        settings["install_time"] = time.time()
-        update_settings({"install_time": settings["install_time"]})
+    # اگر expire_time ست نشده بود، ۳۰ روز بعد از الان رو به عنوان پیش‌فرض در نظر بگیر
+    if "expire_time" not in settings:
+        settings["expire_time"] = time.time() + (30 * 24 * 3600)
+        update_settings({"expire_time": settings["expire_time"]})
         
     links = store.list_links(include_expired=True)
     return _render_admin_page(settings, links, PUBLIC_BASE_URL)
@@ -475,17 +515,25 @@ async def admin_update_settings(
     enable_channel_delivery: bool = Form(False),
     enable_nimbaha: bool = Form(False),
     enable_urldl: bool = Form(False),
+    plan_days: str = Form(""),
     _user: str = Depends(require_admin),
 ):
     if not enable_direct_links and not enable_channel_delivery:
         enable_channel_delivery = True
 
-    update_settings({
+    new_settings = {
         "enable_direct_links": enable_direct_links,
         "enable_channel_delivery": enable_channel_delivery,
         "enable_nimbaha": enable_nimbaha,
         "enable_urldl": enable_urldl,
-    })
+    }
+    
+    # تنظیم دستی زمان باقی‌مانده پلن سرور
+    if plan_days and plan_days.strip().isdigit():
+        days = int(plan_days.strip())
+        new_settings["expire_time"] = time.time() + (days * 24 * 3600)
+
+    update_settings(new_settings)
     
     return RedirectResponse(url="/admin", status_code=303)
 
