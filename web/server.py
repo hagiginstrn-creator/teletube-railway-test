@@ -334,8 +334,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             <div class="container fixed-nav-container">
                 <div class="fixed-brand">
                     <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
-                        <img src="/logo.svg" alt="TeleTube Logo" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));" class="me-2">
-                        <span style="letter-spacing: 1px;">   TELETUBE <span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
+                        <img src="/logo.svg" alt="TeleTube Logo" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));" class="me-3">
+                        <span style="letter-spacing: 1px;">   TELETUBE   <span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
                     </a>
                 </div>
                 <div class="fixed-lang d-flex align-items-center gap-2">
@@ -398,7 +398,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             </div>
                             
                             <div class="d-flex justify-content-between align-items-center py-3 mb-3">
-                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation (Easter Egg)" data-fa="انیمیشن نبرد فضایی (سورپرایز)">Spaceship Animation (Easter Egg)</label>
+                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation " data-fa="انیمیشن نبرد فضایی ">Spaceship Animation (Easter Egg)</label>
                                 <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
                                     <input class="form-check-input m-0" type="checkbox" name="enable_animation" id="c_anim" value="true" {checked_anim}>
                                 </div>
