@@ -185,13 +185,11 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 color: var(--accent-color);
                 border-radius: 12px;
                 user-select: none;
-                touch-action: none; /* Prevent scroll on touch devices while holding */
+                touch-action: none;
                 cursor: pointer;
                 transition: transform 0.1s;
             }}
-            .water-btn:active {{
-                transform: scale(0.98);
-            }}
+            .water-btn:active {{ transform: scale(0.98); }}
             .water-fill {{
                 position: absolute;
                 bottom: 0;
@@ -202,11 +200,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 z-index: 1;
                 transition: height 0.05s linear;
             }}
-            .water-text {{
-                position: relative;
-                z-index: 2;
-                font-weight: 600;
-            }}
+            .water-text {{ position: relative; z-index: 2; font-weight: 600; }}
 
             .btn-glass-danger {{ background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.4); color: #fb7185; transition: all 0.3s; border-radius: 12px; }}
             .btn-glass-danger:hover {{ background: rgba(244, 63, 94, 0.3); color: #fff; box-shadow: 0 0 15px rgba(244, 63, 94, 0.3); }}
@@ -400,72 +394,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Language Toggle System (Default EN)
-        let currentLang = 'en';
-        
-        function toggleLanguage() {{
-            currentLang = currentLang === 'en' ? 'fa' : 'en';
-            document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
-            document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
-            
-            const bsLink = document.getElementById('bs-css');
-            if(currentLang === 'fa') {{
-                bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css";
-            }} else {{
-                bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css";
-            }}
-
-            document.querySelectorAll('[data-en]').forEach(el => {{
-                el.innerText = el.getAttribute(`data-${{currentLang}}`);
-            }});
-            
-            updateRailwayTimer();
-        }}
-
-        // Water Bottle "Hold to Submit" Logic
-        const holdBtn = document.getElementById('holdBtn');
-        const waterFill = document.getElementById('waterFill');
-        const settingsForm = document.getElementById('settingsForm');
-        let holdTimer;
-        let progress = 0;
-        let isHolding = false;
-
-        function startHold(e) {{
-            // prevent text selection and right click on mobile
-            if(e.cancelable) e.preventDefault();
-            isHolding = true;
-            progress = 0;
-            waterFill.style.height = '0%';
-            
-            // 50 قدم * 20 میلی‌ثانیه = 1 ثانیه زمان پر شدن
-            holdTimer = setInterval(() => {{
-                progress += 2;
-                waterFill.style.height = progress + '%';
-                
-                if (progress >= 100) {{
-                    clearInterval(holdTimer);
-                    waterFill.style.background = '#10b981'; // سبز میشه
-                    document.querySelector('.water-text').innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-                    setTimeout(() => settingsForm.submit(), 200); // ارسال فرم
-                }}
-            }}, 20);
-        }}
-
-        function stopHold() {{
-            isHolding = false;
-            clearInterval(holdTimer);
-            if (progress < 100) {{
-                progress = 0;
-                waterFill.style.height = '0%';
-            }}
-        }}
-
-        holdBtn.addEventListener('mousedown', startHold);
-        holdBtn.addEventListener('mouseup', stopHold);
-        holdBtn.addEventListener('mouseleave', stopHold);
-        holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
-        holdBtn.addEventListener('touchend', stopHold);
-
         // Custom Timer Logic
         const expireTimeMs = {expire_time_ms};
 
@@ -491,7 +419,78 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             document.getElementById('railwayTimer').innerText = msg;
         }}
         setInterval(updateRailwayTimer, 60000);
-        updateRailwayTimer();
+
+        // Language Toggle System with Local Storage
+        let currentLang = localStorage.getItem('teletube_lang') || 'en';
+        
+        function applyLanguage() {{
+            document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
+            document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
+            
+            const bsLink = document.getElementById('bs-css');
+            if(currentLang === 'fa') {{
+                bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css";
+            }} else {{
+                bsLink.href = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css";
+            }}
+
+            document.querySelectorAll('[data-en]').forEach(el => {{
+                el.innerText = el.getAttribute(`data-${{currentLang}}`);
+            }});
+            
+            updateRailwayTimer();
+        }}
+
+        function toggleLanguage() {{
+            currentLang = currentLang === 'en' ? 'fa' : 'en';
+            localStorage.setItem('teletube_lang', currentLang);
+            applyLanguage();
+        }}
+        
+        // اعمال زبان در ابتدای لود
+        applyLanguage();
+
+        // Water Bottle "Hold to Submit" Logic
+        const holdBtn = document.getElementById('holdBtn');
+        const waterFill = document.getElementById('waterFill');
+        const settingsForm = document.getElementById('settingsForm');
+        let holdTimer;
+        let progress = 0;
+        let isHolding = false;
+
+        function startHold(e) {{
+            if(e.cancelable) e.preventDefault();
+            isHolding = true;
+            progress = 0;
+            waterFill.style.height = '0%';
+            
+            holdTimer = setInterval(() => {{
+                progress += 2;
+                waterFill.style.height = progress + '%';
+                
+                if (progress >= 100) {{
+                    clearInterval(holdTimer);
+                    waterFill.style.background = '#10b981'; // سبز
+                    document.querySelector('.water-text').innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                    setTimeout(() => settingsForm.submit(), 200);
+                }}
+            }}, 20);
+        }}
+
+        function stopHold() {{
+            isHolding = false;
+            clearInterval(holdTimer);
+            if (progress < 100) {{
+                progress = 0;
+                waterFill.style.height = '0%';
+            }}
+        }}
+
+        holdBtn.addEventListener('mousedown', startHold);
+        holdBtn.addEventListener('mouseup', stopHold);
+        holdBtn.addEventListener('mouseleave', stopHold);
+        holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
+        holdBtn.addEventListener('touchend', stopHold);
 
         // Video Filter Logic
         function filterVideos(type, element) {{
