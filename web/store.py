@@ -84,15 +84,17 @@ def list_links(include_expired=False):
 
 
 def delete_link(token, delete_file=True):
-    """یک لینک رو (و اختیاری فایل‌هاش رو) حذف می‌کنه؛ برای دکمه‌ی حذف دستی توی پنل."""
+    """فایل‌ها رو پاک می‌کنه اما رکورد رو با برچسب حذف‌شده توی دیتابیس نگه می‌داره."""
     with _lock:
         data = _load()
-        entry = data.pop(token, None)
-        _save(data)
-        
+        entry = data.get(token)
+        if entry:
+            entry["is_deleted"] = True  # به جای حذف رکورد، فقط برچسب می‌زنیم
+            _save(data)
+            
     if entry and delete_file:
         p = entry.get("file_path")
-        t = entry.get("thumb_path")  # مسیر تامبنیل
+        t = entry.get("thumb_path")
         try:
             if p and os.path.exists(p):
                 os.remove(p)
@@ -105,18 +107,23 @@ def delete_link(token, delete_file=True):
 
 
 def purge_expired():
-    """لینک‌های منقضی‌شده رو از دیتابیس درمیاره و فایل‌هاشون رو پاک می‌کنه."""
+    """فایل‌های منقضی‌شده رو پاک می‌کنه اما رکوردشون در داشبورد می‌مونه."""
     with _lock:
         data = _load()
         now = time.time()
-        expired_tokens = [t for t, e in data.items() if e["expires_at"] < now]
-        removed = [data.pop(t) for t in expired_tokens]
+        # پیدا کردن لینک‌هایی که منقضی شدن ولی هنوز برچسب حذف نخوردن
+        expired_tokens = [t for t, e in data.items() if e["expires_at"] < now and not e.get("is_deleted")]
+        removed = []
+        for t in expired_tokens:
+            data[t]["is_deleted"] = True
+            removed.append(data[t])
+            
         if expired_tokens:
             _save(data)
             
     for entry in removed:
         p = entry.get("file_path")
-        t = entry.get("thumb_path")  # مسیر تامبنیل
+        t = entry.get("thumb_path")
         try:
             if p and os.path.exists(p):
                 os.remove(p)
