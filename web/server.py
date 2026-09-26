@@ -335,7 +335,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 <div class="fixed-brand">
                     <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
                         <img src="/logo.svg" alt="TeleTube Logo" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));" class="me-3">
-                        <span style="letter-spacing: 1px;">   TELETUBE   <span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
+                        <span style="letter-spacing: 1px;">TELETUBE<span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
                     </a>
                 </div>
                 <div class="fixed-lang d-flex align-items-center gap-2">
