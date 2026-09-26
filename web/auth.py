@@ -1,26 +1,26 @@
-"""احراز هویت ساده (HTTP Basic Auth) برای پنل مدیریت."""
+"""احراز هویت با کوکی برای پنل مدیریت شیشه‌ای."""
 import secrets
-
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-
+from fastapi import Request, HTTPException, status
 from config import ADMIN_PANEL_USERNAME, ADMIN_PANEL_PASSWORD
 
-security = HTTPBasic()
+_ACTIVE_SESSION = None
 
+def create_session():
+    global _ACTIVE_SESSION
+    _ACTIVE_SESSION = secrets.token_hex(16)
+    return _ACTIVE_SESSION
 
-def require_admin(credentials: HTTPBasicCredentials = Depends(security)):
+def require_admin(request: Request):
     if not ADMIN_PANEL_PASSWORD:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="پنل مدیریت غیرفعاله چون ADMIN_PANEL_PASSWORD ست نشده.",
         )
-    correct_username = secrets.compare_digest(credentials.username, ADMIN_PANEL_USERNAME)
-    correct_password = secrets.compare_digest(credentials.password, ADMIN_PANEL_PASSWORD)
-    if not (correct_username and correct_password):
+    
+    session_cookie = request.cookies.get("teletube_session")
+    if not session_cookie or session_cookie != _ACTIVE_SESSION:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="یوزرنیم یا پسورد اشتباهه",
-            headers={"WWW-Authenticate": "Basic"},
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+            headers={"Location": "/login"}
         )
-    return credentials.username
+    return ADMIN_PANEL_USERNAME
