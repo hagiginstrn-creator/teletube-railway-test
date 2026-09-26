@@ -159,7 +159,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }}
             .rocket-animated {{ animation: rocket-pulse 2s infinite ease-in-out; display: inline-block; }}
 
-            /* CSS های جنگ فضایی (Easter Egg) */
+            /* CSS های جنگ فضایی (Easter Egg) با SVG */
             .space-entity {{
                 position: fixed;
                 z-index: 9999;
@@ -167,50 +167,15 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 opacity: 0;
                 transition: left 1s ease-in-out, top 1s ease-in-out, transform 0.4s ease, opacity 0.5s;
             }}
-            .ship-wrapper {{
-                position: relative;
-                width: 60px; height: 60px;
-                display: flex; justify-content: center; align-items: center;
-            }}
-            
-            /* سفینه یوتیوب */
-            .ship-yt-body {{
-                width: 0; height: 0;
-                border-left: 20px solid transparent;
-                border-right: 20px solid transparent;
-                border-bottom: 50px solid #ef4444;
-                position: absolute;
-                filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.8));
-            }}
-            .ship-yt-icon {{ position: absolute; top: 18px; color: white; font-size: 1.2rem; z-index: 2; }}
-
-            /* سفینه تلگرام */
-            .ship-tg-body {{
-                width: 55px; height: 25px;
-                background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
-                border-radius: 50px 50px 15px 15px;
-                position: absolute; top: 25px;
-                filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8));
-            }}
-            .ship-tg-dome {{
-                width: 34px; height: 20px; background: rgba(255,255,255,0.9);
-                border-radius: 50px 50px 0 0; position: absolute; top: 10px;
-            }}
-            .ship-tg-icon {{ position: absolute; color: white; font-size: 1.1rem; top: 26px; z-index: 2; }}
-
             .projectile {{
-                font-size: 1.8rem; color: #10b981; 
-                filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.9));
                 transition: left 0.4s linear, top 0.4s linear, opacity 0.2s;
+                transform-origin: center center;
             }}
-            .glass-particle {{
-                position: fixed; width: 12px; height: 12px;
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(4px);
-                border: 1px solid rgba(255,255,255,0.4);
-                border-radius: 4px;
+            .pixel-particle {{
+                position: fixed; width: 8px; height: 8px;
                 pointer-events: none; z-index: 9999;
-                transition: transform 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.6s ease-out;
+                transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+                box-shadow: 0 0 8px rgba(255,255,255,0.4);
             }}
 
             .glass {{ background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); }}
@@ -259,10 +224,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); cursor: pointer; float: none; margin-top: 0; width: 2.5em; height: 1.25em; }}
             .form-switch .form-check-input:checked {{ background-color: var(--accent-color); border-color: var(--accent-color); }}
 
-            ::-webkit-scrollbar {{ width: 8px; }}
-            ::-webkit-scrollbar-track {{ background: #0f172a; }}
-            ::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, 0.2); border-radius: 10px; }}
-            ::-webkit-scrollbar-thumb:hover {{ background: rgba(255, 255, 255, 0.4); }}
         </style>
     </head>
     <body>
@@ -390,7 +351,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 {cards_html}
             </div>
         </div>
-    </div> <!-- پایان کانتینر اصلی -->
+    </div> 
 
     <!-- Modal for Adjusting Plan Time -->
     <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
@@ -495,7 +456,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Custom Timer Logic (اجرای آنی)
+        // Custom Timer Logic 
         const expireTimeMs = {expire_time_ms};
         let currentLang = localStorage.getItem('teletube_lang') || 'en';
 
@@ -552,26 +513,85 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         applyLanguage();
 
         // ----------------------------------------------------
-        // انیمیشن سفینه فضایی (YouTube vs Telegram) 🚀
+        // انیمیشن سفینه فضایی (SVG + Pixel Explosion) 🚀
         // ----------------------------------------------------
-        function createShip(type) {{
-            const entity = document.createElement('div');
-            entity.className = `space-entity ship-wrapper`;
-            if (type === 'yt') {{
-                entity.innerHTML = `<div class="ship-yt-body"></div><i class="bi bi-youtube ship-yt-icon"></i>`;
-            }} else {{
-                entity.innerHTML = `<div class="ship-tg-dome"></div><div class="ship-tg-body"></div><i class="bi bi-telegram ship-tg-icon"></i>`;
-            }}
-            document.body.appendChild(entity);
-            return entity;
-        }}
+        const ytSvg = `<svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="ytGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ff4b4b" /><stop offset="100%" stop-color="#b91c1c" />
+            </linearGradient>
+            <linearGradient id="glassGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#bae6fd" /><stop offset="100%" stop-color="#0284c7" />
+            </linearGradient>
+          </defs>
+          <path d="M 45 90 Q 60 120 75 90 Z" fill="#f59e0b">
+            <animate attributeName="d" values="M 45 90 Q 60 120 75 90 Z; M 48 90 Q 60 105 72 90 Z; M 45 90 Q 60 120 75 90 Z" dur="0.4s" repeatCount="indefinite"/>
+          </path>
+          <path d="M 60 10 L 110 80 L 80 85 L 60 65 L 40 85 L 10 80 Z" fill="url(#ytGrad)" />
+          <ellipse cx="60" cy="55" rx="20" ry="40" fill="#e2e8f0" />
+          <ellipse cx="60" cy="55" rx="14" ry="38" fill="#f8fafc" />
+          <ellipse cx="60" cy="35" rx="10" ry="15" fill="url(#glassGrad1)" />
+          <path d="M 54 30 Q 60 25 66 30" stroke="white" fill="transparent" opacity="0.6" />
+          <g transform="translate(42, 60) scale(1.5)">
+            <rect width="24" height="16" rx="4" fill="#ff0000" />
+            <polygon points="9,4 9,12 16,8" fill="white" />
+          </g>
+        </svg>`;
+
+        const tgSvg = `<svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="tgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#60a5fa" /><stop offset="100%" stop-color="#1d4ed8" />
+            </linearGradient>
+            <linearGradient id="glassGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#bae6fd" /><stop offset="100%" stop-color="#0284c7" />
+            </linearGradient>
+          </defs>
+          <path d="M 40 85 Q 60 115 80 85 Z" fill="#0ea5e9">
+            <animate attributeName="d" values="M 40 85 Q 60 115 80 85 Z; M 45 85 Q 60 100 75 85 Z; M 40 85 Q 60 115 80 85 Z" dur="0.4s" repeatCount="indefinite"/>
+          </path>
+          <path d="M 15 60 C 15 30 105 30 105 60 C 120 80 80 90 60 90 C 40 90 0 80 15 60 Z" fill="url(#tgGrad)" />
+          <ellipse cx="60" cy="60" rx="35" ry="25" fill="#cbd5e1" />
+          <ellipse cx="60" cy="58" rx="30" ry="20" fill="#f1f5f9" />
+          <path d="M 35 55 C 35 30 85 30 85 55 Z" fill="url(#glassGrad2)" />
+          <g transform="translate(39, 53) scale(1.5)">
+            <circle cx="14" cy="14" r="14" fill="#0088cc" />
+            <path d="M 6 14 L 22 7 L 17 20 L 13 16 L 11 20 L 10 16 Z" fill="white" />
+          </g>
+        </svg>`;
+
+        const bulletSvg = `<svg width="30" height="60" viewBox="0 0 40 80" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <linearGradient id="trailGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="1" />
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <g filter="url(#glow)">
+              <rect x="16" y="45" width="8" height="35" fill="url(#trailGrad)" rx="4"/>
+              <circle cx="20" cy="15" r="8" fill="#10b981" />
+              <path d="M 16 15 L 24 15 L 24 40 L 30 40 L 20 55 L 10 40 L 16 40 Z" fill="#34d399" />
+              <path d="M 6 50 L 6 60 L 34 60 L 34 50" stroke="#059669" stroke-width="4" fill="none" stroke-linecap="round"/>
+          </g>
+        </svg>`;
 
         function triggerSpaceBattle() {{
             const animCheckbox = document.getElementById('c_anim');
             if (!animCheckbox || !animCheckbox.checked) return;
 
-            const yt = createShip('yt');
-            const tg = createShip('tg');
+            const yt = document.createElement('div');
+            yt.className = 'space-entity';
+            yt.innerHTML = ytSvg;
+            document.body.appendChild(yt);
+
+            const tg = document.createElement('div');
+            tg.className = 'space-entity';
+            tg.innerHTML = tgSvg;
+            document.body.appendChild(tg);
 
             let ytX = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
             let ytY = Math.random() * window.innerHeight;
@@ -594,14 +614,18 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 
                 tgX = Math.max(100, Math.min(window.innerWidth - 100, tgX + (Math.random() - 0.5) * 600));
                 tgY = Math.max(100, Math.min(window.innerHeight - 100, tgY + (Math.random() - 0.5) * 500));
+                
+                // چرخش تلگرام بر اساس جهت حرکت
+                const tgAngle = Math.atan2(tgY - parseFloat(tg.style.top), tgX - parseFloat(tg.style.left)) * 180 / Math.PI;
+                tg.style.transform = `rotate(${{tgAngle + 90}}deg)`;
                 tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
 
                 setTimeout(() => {{
                     ytX = tgX + (Math.random() - 0.5) * 200;
                     ytY = tgY + (Math.random() - 0.5) * 200;
                     
-                    const angle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
-                    yt.style.transform = `rotate(${{angle + 90}}deg)`;
+                    const ytAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
+                    yt.style.transform = `rotate(${{ytAngle + 90}}deg)`;
                     
                     yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
                     
@@ -613,9 +637,13 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             function shoot() {{
                 const hit = Math.random() > 0.35; 
 
-                const proj = document.createElement('i');
-                proj.className = 'bi bi-cloud-arrow-down-fill space-entity projectile';
+                const proj = document.createElement('div');
+                proj.className = 'space-entity projectile';
+                proj.innerHTML = bulletSvg;
                 proj.style.left = ytX + 'px'; proj.style.top = ytY + 'px';
+                
+                const shootAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
+                proj.style.transform = `rotate(${{shootAngle + 90}}deg)`;
                 proj.style.opacity = '1';
                 document.body.appendChild(proj);
 
@@ -623,18 +651,17 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     if (hit) {{
                         proj.style.left = tgX + 'px'; proj.style.top = tgY + 'px';
                     }} else {{
-                        proj.style.left = (tgX + (Math.random() > 0.5 ? 300 : -300)) + 'px'; 
-                        proj.style.top = (tgY + (Math.random() > 0.5 ? 300 : -300)) + 'px';
+                        proj.style.left = (tgX + (Math.random() > 0.5 ? 400 : -400)) + 'px'; 
+                        proj.style.top = (tgY + (Math.random() > 0.5 ? 400 : -400)) + 'px';
                         
                         tg.style.left = '-200px'; tg.style.top = '-200px';
-                        tg.style.transform = 'scale(0.5)';
                         tg.style.opacity = '0';
                     }}
 
                     setTimeout(() => {{
                         proj.remove();
                         if (hit) {{
-                            createGlassExplosion(tgX + 30, tgY + 30);
+                            createPixelExplosion(tgX + 40, tgY + 40);
                             tg.style.transform = 'scale(0)'; 
                             tg.style.opacity = '0';
                         }}
@@ -650,19 +677,21 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             setTimeout(moveShips, 500);
         }}
 
-        function createGlassExplosion(x, y) {{
-            for(let i=0; i<10; i++) {{
+        function createPixelExplosion(x, y) {{
+            const colors = ['#3b82f6', '#60a5fa', '#1d4ed8', '#f1f5f9', '#94a3b8'];
+            for(let i=0; i<25; i++) {{
                 const p = document.createElement('div');
-                p.className = 'glass-particle';
+                p.className = 'pixel-particle';
+                p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
                 p.style.left = x + 'px';
                 p.style.top = y + 'px';
                 document.body.appendChild(p);
                 
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 50 + Math.random() * 100;
+                const distance = 30 + Math.random() * 120;
                 
                 setTimeout(() => {{
-                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg) scale(${{Math.random() + 0.5}})`;
+                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg)`;
                     p.style.opacity = '0';
                 }}, 20);
                 setTimeout(() => p.remove(), 700);
@@ -671,8 +700,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
         setTimeout(triggerSpaceBattle, 3000);
         setInterval(() => {{
-            if (Math.random() > 0.4) triggerSpaceBattle();
-        }}, 15000);
+            if (Math.random() > 0.3) triggerSpaceBattle();
+        }}, 12000);
+
+        // ----------------------------------------------------
 
         function submitQuickPlan(days, hours) {{
             document.getElementById('selectDays').value = days;
@@ -680,7 +711,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             document.getElementById('planForm').submit();
         }}
 
-        // Water Bottle Hold Logic
         const holdBtn = document.getElementById('holdBtn');
         const waterFill = document.getElementById('waterFill');
         const settingsForm = document.getElementById('settingsForm');
@@ -712,7 +742,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
         holdBtn.addEventListener('touchend', stopHold);
 
-        // Filter Logic
         function filterVideos(type, element) {{
             document.getElementById('currentFilterLabel').innerText = element.getAttribute(`data-${{currentLang}}`);
             document.getElementById('currentFilterLabel').setAttribute('data-en', element.getAttribute('data-en'));
@@ -738,7 +767,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }});
         }}
 
-        // Modal Logic
         const myModal = new bootstrap.Modal(document.getElementById('linkModal'));
 
         function showModal(token, title, direct, urldl, tg, createdAt, expiresAt, isDeleted) {{
