@@ -120,3 +120,14 @@ def purge_expired():
             logger.error(f"خطا در حذف فایل منقضی {p}: {e}")
 
     return removed
+
+
+def update_link_extras(token, thumb_path=None, urldl_link=None, tg_link=None):
+    """اطلاعات تکمیلی مثل تامبنیل و لینک‌های اضافه رو به دیتابیس متصل می‌کنه."""
+    with _lock:
+        data = _load()
+        if token in data:
+            data[token]["thumb_path"] = thumb_path
+            data[token]["urldl_link"] = urldl_link
+            data[token]["tg_link"] = tg_link
+            _save(data)
