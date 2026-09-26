@@ -162,7 +162,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             /* CSS های جنگ فضایی (Easter Egg) با SVG */
             .space-entity {{
                 position: fixed;
-                z-index: 9999;
                 pointer-events: none;
                 opacity: 0;
                 transition: left 1s ease-in-out, top 1s ease-in-out, transform 0.4s ease, opacity 0.5s;
@@ -173,7 +172,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }}
             .pixel-particle {{
                 position: fixed; width: 8px; height: 8px;
-                pointer-events: none; z-index: 9999;
+                pointer-events: none;
                 transition: transform 0.5s ease-out, opacity 0.5s ease-out;
                 box-shadow: 0 0 8px rgba(255,255,255,0.4);
             }}
@@ -532,7 +531,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
           <ellipse cx="60" cy="55" rx="14" ry="38" fill="#f8fafc" />
           <ellipse cx="60" cy="35" rx="10" ry="15" fill="url(#glassGrad1)" />
           <path d="M 54 30 Q 60 25 66 30" stroke="white" fill="transparent" opacity="0.6" />
-          <g transform="translate(42, 60) scale(1.5)">
+          <g transform="translate(42, 57) scale(1.5)">
             <rect width="24" height="16" rx="4" fill="#ff0000" />
             <polygon points="9,4 9,12 16,8" fill="white" />
           </g>
@@ -560,22 +559,24 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
           </g>
         </svg>`;
 
-        const bulletSvg = `<svg width="30" height="60" viewBox="0 0 40 80" xmlns="http://www.w3.org/2000/svg">
+        const bulletSvg = `<svg width="40" height="80" viewBox="0 0 40 80" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feGaussianBlur stdDeviation="6" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
             <linearGradient id="trailGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stop-color="#10b981" stop-opacity="1" />
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+              <stop offset="0%" stop-color="#39ff14" stop-opacity="1" />
+              <stop offset="100%" stop-color="#39ff14" stop-opacity="0" />
             </linearGradient>
           </defs>
           <g filter="url(#glow)">
+              <!-- دنباله سبز -->
               <rect x="16" y="45" width="8" height="35" fill="url(#trailGrad)" rx="4"/>
-              <circle cx="20" cy="15" r="8" fill="#10b981" />
-              <path d="M 16 15 L 24 15 L 24 40 L 30 40 L 20 55 L 10 40 L 16 40 Z" fill="#34d399" />
-              <path d="M 6 50 L 6 60 L 34 60 L 34 50" stroke="#059669" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <!-- آیکون دانلود -->
+              <circle cx="20" cy="15" r="8" fill="#39ff14" />
+              <path d="M 16 15 L 24 15 L 24 40 L 30 40 L 20 55 L 10 40 L 16 40 Z" fill="#4ade80" />
+              <path d="M 6 50 L 6 60 L 34 60 L 34 50" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
           </g>
         </svg>`;
 
@@ -583,28 +584,33 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             const animCheckbox = document.getElementById('c_anim');
             if (!animCheckbox || !animCheckbox.checked) return;
 
+            const zLayer = Math.random() > 0.7 ? '9999' : '5'; // ۷۰ درصد میرن زیر شیشه‌ها
+
             const yt = document.createElement('div');
             yt.className = 'space-entity';
             yt.innerHTML = ytSvg;
+            yt.style.zIndex = zLayer;
             document.body.appendChild(yt);
 
             const tg = document.createElement('div');
             tg.className = 'space-entity';
             tg.innerHTML = tgSvg;
+            tg.style.zIndex = zLayer;
             document.body.appendChild(tg);
 
-            let ytX = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
+            // ورود رندوم از اطراف صفحه
+            let ytX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
             let ytY = Math.random() * window.innerHeight;
-            let tgX = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
+            let tgX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
             let tgY = Math.random() * window.innerHeight;
 
             yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
             tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
 
-            setTimeout(() => {{ yt.style.opacity = '1'; tg.style.opacity = '1'; }}, 100);
+            setTimeout(() => {{ yt.style.opacity = '1'; tg.style.opacity = '1'; }}, 50);
 
             let step = 0;
-            const maxSteps = 3 + Math.floor(Math.random() * 3);
+            const maxSteps = 3 + Math.floor(Math.random() * 2);
 
             function moveShips() {{
                 if (step >= maxSteps) {{
@@ -612,86 +618,131 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     return;
                 }}
                 
-                tgX = Math.max(100, Math.min(window.innerWidth - 100, tgX + (Math.random() - 0.5) * 600));
-                tgY = Math.max(100, Math.min(window.innerHeight - 100, tgY + (Math.random() - 0.5) * 500));
+                // فرار تصادفی تلگرام
+                tgX = Math.max(100, Math.min(window.innerWidth - 100, tgX + (Math.random() - 0.5) * 800));
+                tgY = Math.max(100, Math.min(window.innerHeight - 100, tgY + (Math.random() - 0.5) * 600));
                 
-                // چرخش تلگرام بر اساس جهت حرکت
                 const tgAngle = Math.atan2(tgY - parseFloat(tg.style.top), tgX - parseFloat(tg.style.left)) * 180 / Math.PI;
                 tg.style.transform = `rotate(${{tgAngle + 90}}deg)`;
                 tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
 
-                setTimeout(() => {{
-                    ytX = tgX + (Math.random() - 0.5) * 200;
-                    ytY = tgY + (Math.random() - 0.5) * 200;
-                    
-                    const ytAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
-                    yt.style.transform = `rotate(${{ytAngle + 90}}deg)`;
-                    
-                    yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
-                    
-                    step++;
-                    setTimeout(moveShips, 1000);
-                }}, 300);
+                // یوتیوب (راکت) در جهت حرکت میچرخه و دنبال میکنه
+                const currentYtX = parseFloat(yt.style.left);
+                const currentYtY = parseFloat(yt.style.top);
+                
+                ytX = tgX + (Math.random() > 0.5 ? 1 : -1) * (300 + Math.random() * 200); // فاصله بیشتر
+                ytY = tgY + (Math.random() > 0.5 ? 1 : -1) * (300 + Math.random() * 200);
+                
+                const ytFlyAngle = Math.atan2(ytY - currentYtY, ytX - currentYtX) * 180 / Math.PI;
+                yt.style.transform = `rotate(${{ytFlyAngle + 90}}deg)`;
+                
+                yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
+                
+                step++;
+                setTimeout(moveShips, 1200);
             }}
 
             function shoot() {{
-                const hit = Math.random() > 0.35; 
-
-                const proj = document.createElement('div');
-                proj.className = 'space-entity projectile';
-                proj.innerHTML = bulletSvg;
-                proj.style.left = ytX + 'px'; proj.style.top = ytY + 'px';
+                // هدف‌گیری به سمت تلگرام
+                const aimAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
+                yt.style.transform = `rotate(${{aimAngle + 90}}deg)`;
                 
-                const shootAngle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
-                proj.style.transform = `rotate(${{shootAngle + 90}}deg)`;
-                proj.style.opacity = '1';
-                document.body.appendChild(proj);
-
                 setTimeout(() => {{
-                    if (hit) {{
-                        proj.style.left = tgX + 'px'; proj.style.top = tgY + 'px';
-                    }} else {{
-                        proj.style.left = (tgX + (Math.random() > 0.5 ? 400 : -400)) + 'px'; 
-                        proj.style.top = (tgY + (Math.random() > 0.5 ? 400 : -400)) + 'px';
+                    const willHit = Math.random() > 0.35; 
+                    const doRapid = Math.random() > 0.4; // 60% احتمال رگبار زدن قبل از تیر اصلی
+
+                    function fireBullet(isSmall, isHit) {{
+                        const proj = document.createElement('div');
+                        proj.className = 'space-entity projectile';
+                        proj.innerHTML = bulletSvg;
+                        proj.style.left = ytX + 'px'; proj.style.top = ytY + 'px';
+                        proj.style.zIndex = zLayer;
                         
-                        tg.style.left = '-200px'; tg.style.top = '-200px';
-                        tg.style.opacity = '0';
+                        if (isSmall) {{
+                            proj.style.transform = `rotate(${{aimAngle + 90}}deg) scale(0.3)`;
+                            proj.style.transition = 'left 0.2s linear, top 0.2s linear, opacity 0.1s';
+                        }} else {{
+                            proj.style.transform = `rotate(${{aimAngle + 90}}deg) scale(1)`;
+                            proj.style.transition = 'left 0.4s linear, top 0.4s linear, opacity 0.2s';
+                        }}
+                        proj.style.opacity = '1';
+                        document.body.appendChild(proj);
+
+                        setTimeout(() => {{
+                            let targetX, targetY;
+                            if (isSmall || !isHit) {{
+                                // شلیک خطا
+                                const spread = isSmall ? (Math.random() - 0.5) * 60 : (Math.random() > 0.5 ? 30 : -30);
+                                const rad = (aimAngle + spread) * Math.PI / 180;
+                                targetX = ytX + Math.cos(rad) * 2000;
+                                targetY = ytY + Math.sin(rad) * 2000;
+                            }} else {{
+                                targetX = tgX; targetY = tgY;
+                            }}
+                            
+                            proj.style.left = targetX + 'px';
+                            proj.style.top = targetY + 'px';
+
+                            const flightTime = isSmall ? 200 : 400;
+
+                            if (!isSmall && !isHit) {{
+                                tg.style.left = '-300px'; tg.style.top = '-300px';
+                                tg.style.opacity = '0';
+                            }}
+
+                            setTimeout(() => {{
+                                proj.remove();
+                                if (!isSmall && isHit) {{
+                                    createPixelExplosion(tgX + 40, tgY + 40, zLayer);
+                                    tg.style.transform = 'scale(0)'; 
+                                    tg.style.opacity = '0';
+                                }}
+                                if (!isSmall) {{
+                                    yt.style.left = window.innerWidth + 300 + 'px';
+                                    yt.style.opacity = '0';
+                                    setTimeout(() => {{ yt.remove(); tg.remove(); }}, 1000);
+                                }}
+                            }}, flightTime);
+                        }}, 20);
                     }}
 
-                    setTimeout(() => {{
-                        proj.remove();
-                        if (hit) {{
-                            createPixelExplosion(tgX + 40, tgY + 40);
-                            tg.style.transform = 'scale(0)'; 
-                            tg.style.opacity = '0';
-                        }}
-                        
-                        yt.style.left = window.innerWidth + 200 + 'px';
-                        yt.style.opacity = '0';
-                        
-                        setTimeout(() => {{ yt.remove(); tg.remove(); }}, 1000);
-                    }}, 400); 
-                }}, 50);
+                    if (doRapid) {{
+                        let shots = 0;
+                        const maxShots = 4 + Math.floor(Math.random() * 4);
+                        const shotInterval = setInterval(() => {{
+                            fireBullet(true, false); 
+                            shots++;
+                            if (shots >= maxShots) {{
+                                clearInterval(shotInterval);
+                                setTimeout(() => {{ fireBullet(false, willHit); }}, 300);
+                            }}
+                        }}, 120);
+                    }} else {{
+                        fireBullet(false, willHit);
+                    }}
+
+                }}, 400);
             }}
 
-            setTimeout(moveShips, 500);
+            setTimeout(moveShips, 200);
         }}
 
-        function createPixelExplosion(x, y) {{
+        function createPixelExplosion(x, y, zLayer) {{
             const colors = ['#3b82f6', '#60a5fa', '#1d4ed8', '#f1f5f9', '#94a3b8'];
-            for(let i=0; i<25; i++) {{
+            for(let i=0; i<30; i++) {{
                 const p = document.createElement('div');
                 p.className = 'pixel-particle';
                 p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
                 p.style.left = x + 'px';
                 p.style.top = y + 'px';
+                p.style.zIndex = zLayer;
                 document.body.appendChild(p);
                 
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 30 + Math.random() * 120;
+                const distance = 40 + Math.random() * 150;
                 
                 setTimeout(() => {{
-                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg)`;
+                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg) scale(${{Math.random() * 1.5}})`;
                     p.style.opacity = '0';
                 }}, 20);
                 setTimeout(() => p.remove(), 700);
