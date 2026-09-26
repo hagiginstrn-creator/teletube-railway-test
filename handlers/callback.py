@@ -240,6 +240,10 @@ async def process_download(context, chat_id, message_id, user_id, quality, url):
                     f"`{str(e)}`"
                            ),
             )
+         if direct_link:
+            tg_url = f"{TARGET_CHANNEL}/{channel_msg_id}" if channel_msg_id else None
+            link_store.update_link_extras(entry['token'], thumb_path, urldl_link, tg_url)
+             
     finally:
         # اگه لینک مستقیم ساخته شده، فایل رو الان پاک نکن — تا TTL خودش زنده
         # می‌مونه (پاکسازی دوره‌ای توی bot.py انجامش می‌ده).
