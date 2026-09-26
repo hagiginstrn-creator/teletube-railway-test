@@ -81,7 +81,7 @@ def make_urldl_link(direct_url, timeout=30):
             return None
             
         file_id = match.group(0)
-        final_link = f"https://urldl.ir/dl/{file_id}"
+        final_link = f"https://urldl.ir/download/{file_id}"
         
         logger.info(f"urldl link successfully created: {final_link}")
         return final_link
