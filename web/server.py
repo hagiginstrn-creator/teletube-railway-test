@@ -14,8 +14,16 @@ from web.auth import require_admin, create_session
 
 app = FastAPI(title="TeleTube", docs_url=None, redoc_url=None)
 
-# دیکشنری برای ذخیره تلاش‌های ناموفق لاگین: { "IP": {"count": int, "lock_until": float} }
 FAILED_ATTEMPTS = {}
+
+@app.get("/logo.svg")
+async def get_custom_logo():
+    """مسیر خواندن لوگوی اختصاصی کاربر از پوشه مدیا"""
+    logo_path = "media/logo.svg"
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/svg+xml")
+    # در صورتی که فایل پیدا نشد یک پاسخ خالی برمی‌گرداند تا ارور ندهد
+    return Response(content=b"", media_type="image/svg+xml")
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None, mins: str = None):
@@ -52,8 +60,8 @@ async def login_page(request: Request, error: str = None, mins: str = None):
         <div class="bg-orb orb-1"></div>
         <div class="bg-orb orb-2"></div>
         <div class="glass text-center">
-            <i class="bi bi-youtube text-danger" style="font-size: 3rem;"></i>
-            <h4 class="mt-2 mb-4 fw-bold" style="letter-spacing: 1px;">TELETUBE <span class="fw-light fs-6" style="color: #10b981;">LOGIN</span></h4>
+            <img src="/logo.svg" alt="TeleTube Logo" style="width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.15));">
+            <h4 class="mt-3 mb-4 fw-bold" style="letter-spacing: 1px;">TELETUBE <span class="fw-light fs-6" style="color: #10b981;">LOGIN</span></h4>
             <form action="/login" method="post">
                 <div class="mb-3 text-start">
                     <label class="form-label text-info small fw-bold">Username</label>
@@ -108,8 +116,8 @@ async def process_login(request: Request, username: str = Form(...), password: s
 async def logout():
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("teletube_session")
-    global _ACTIVE_SESSION
-    _ACTIVE_SESSION = None
+    import web.auth
+    web.auth._ACTIVE_SESSION = None
     return response
 
 @app.get("/")
@@ -242,6 +250,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .orb-3 {{ width: 350px; height: 350px; background: rgba(56, 189, 248, 0.2); top: 30%; left: 40%; animation-duration: 18s; }}
 
             @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
+
             @keyframes rocket-pulse {{
                 0% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
                 50% {{ transform: scale(1.15) translateY(-2px); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }}
@@ -325,7 +334,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             <div class="container fixed-nav-container">
                 <div class="fixed-brand">
                     <a class="navbar-brand fw-bold text-white d-flex align-items-center m-0" href="#">
-                        <i class="bi bi-youtube text-danger fs-3 me-2"></i> 
+                        <img src="/logo.svg" alt="TeleTube Logo" style="width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));" class="me-2">
                         <span style="letter-spacing: 1px;">TELETUBE <span class="fw-light" style="color: #10b981;">DASHBOARD</span></span>
                     </a>
                 </div>
@@ -340,6 +349,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
         <div class="container mb-5 pb-5">
         
+            <!-- تایمر Railway Widget -->
             <div class="glass timer-widget p-4 mb-5 shadow-sm d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div class="d-flex align-items-center mb-3 mb-md-0">
                     <div class="p-3 rounded-circle me-3 ms-2" style="background: rgba(245, 158, 11, 0.1);">
@@ -360,6 +370,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             </div>
 
             <div class="row">
+                <!-- Settings Panel -->
                 <div class="col-lg-6 mb-4">
                     <div class="glass p-4 h-100 d-flex flex-column">
                         <h5 class="mb-4 text-white"><i class="bi bi-sliders text-info me-2"></i> <span data-en="System Configuration" data-fa="پیکربندی سیستم">System Configuration</span></h5>
@@ -387,7 +398,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                             </div>
                             
                             <div class="d-flex justify-content-between align-items-center py-3 mb-3">
-                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation " data-fa="انیمیشن نبرد فضایی ">Spaceship Animation (Easter Egg)</label>
+                                <label class="form-check-label fs-6 mb-0 text-warning" for="c_anim" data-en="Spaceship Animation (Easter Egg)" data-fa="انیمیشن نبرد فضایی (سورپرایز)">Spaceship Animation (Easter Egg)</label>
                                 <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
                                     <input class="form-check-input m-0" type="checkbox" name="enable_animation" id="c_anim" value="true" {checked_anim}>
                                 </div>
@@ -406,6 +417,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                     </div>
                 </div>
 
+                <!-- Bot Control Panel -->
                 <div class="col-lg-6 mb-4">
                     <div class="glass p-4 h-100">
                         <h5 class="mb-4 text-white"><i class="bi bi-robot text-primary me-2"></i> <span data-en="Telegram Bot Control" data-fa="کنترل ربات تلگرام">Telegram Bot Control</span></h5>
@@ -441,6 +453,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         </div>
     </div> 
 
+    <!-- Modal for Adjusting Plan Time -->
     <div class="modal fade" id="planModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
@@ -487,6 +500,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         </div>
     </div>
 
+    <!-- Modal for Video Links -->
     <div class="modal fade" id="linkModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="z-index: 1055;">
             <div class="modal-content shadow-lg">
@@ -542,6 +556,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Custom Timer Logic 
         const expireTimeMs = {expire_time_ms};
         let currentLang = localStorage.getItem('teletube_lang') || 'en';
 
@@ -570,6 +585,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         updateRailwayTimer();
         setInterval(updateRailwayTimer, 60000);
 
+        // Language Toggle System
         function applyLanguage() {{
             document.body.setAttribute('dir', currentLang === 'en' ? 'ltr' : 'rtl');
             document.getElementById('langBtn').innerText = currentLang === 'en' ? 'FA' : 'EN';
@@ -596,6 +612,9 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         
         applyLanguage();
 
+        // ----------------------------------------------------
+        // انیمیشن سفینه فضایی (SVG + Pixel Explosion) 🚀
+        // ----------------------------------------------------
         const ytSvg = `<svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="ytGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -653,7 +672,9 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             </linearGradient>
           </defs>
           <g filter="url(#glow)">
+              <!-- دنباله سبز -->
               <rect x="16" y="45" width="8" height="35" fill="url(#trailGrad)" rx="4"/>
+              <!-- آیکون دانلود -->
               <circle cx="20" cy="15" r="8" fill="#39ff14" />
               <path d="M 16 15 L 24 15 L 24 40 L 30 40 L 20 55 L 10 40 L 16 40 Z" fill="#4ade80" />
               <path d="M 6 50 L 6 60 L 34 60 L 34 50" stroke="#16a34a" stroke-width="4" fill="none" stroke-linecap="round"/>
@@ -678,6 +699,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             tg.style.zIndex = zLayer;
             document.body.appendChild(tg);
 
+            // ورود رندوم از اطراف صفحه
             let ytX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
             let ytY = Math.random() * window.innerHeight;
             let tgX = Math.random() < 0.5 ? -200 : window.innerWidth + 200;
@@ -828,6 +850,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         setInterval(() => {{
             if (Math.random() > 0.3) triggerSpaceBattle();
         }}, 12000);
+
+        // ----------------------------------------------------
 
         function submitQuickPlan(days, hours) {{
             document.getElementById('selectDays').value = days;
