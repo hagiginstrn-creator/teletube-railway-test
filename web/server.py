@@ -57,7 +57,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     checked_direct = "checked" if settings.get("enable_direct_links", True) else ""
     checked_channel = "checked" if settings.get("enable_channel_delivery", True) else ""
     checked_nimbaha = "checked" if settings.get("enable_nimbaha", False) else ""
-    checked_urldl = "checked" if settings.get("enable_urldl", True) else ""
+    checked_urldl = "checked" if settings.get("enable_urldl", False) else ""
 
     rows = ""
     for entry in links:
