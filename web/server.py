@@ -136,10 +136,8 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             body[dir="ltr"] {{ text-align: left; }}
             body[dir="rtl"] {{ text-align: right; }}
 
-            /* لایه‌بندی (جلوگیری از کلیک‌های ناخواسته روی سفینه‌ها) */
             .main-content {{ position: relative; z-index: 10; }}
 
-            /* Fixed Navbar Positioning */
             .fixed-nav-container {{
                 position: relative; width: 100%; height: 40px;
                 display: flex; align-items: center; justify-content: space-between;
@@ -154,7 +152,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
 
             @keyframes float {{ 0% {{ transform: translateY(0) scale(1); }} 100% {{ transform: translateY(-40px) scale(1.1); }} }}
 
-            /* انیمیشن پالس موشک */
             @keyframes rocket-pulse {{
                 0% {{ transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }}
                 50% {{ transform: scale(1.15) translateY(-2px); filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }}
@@ -165,26 +162,46 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             /* CSS های جنگ فضایی (Easter Egg) */
             .space-entity {{
                 position: fixed;
-                z-index: 1; /* بالاتر از بک‌گراند، پایین‌تر از کارت‌ها */
+                z-index: 9999;
                 pointer-events: none;
                 opacity: 0;
+                transition: left 1s ease-in-out, top 1s ease-in-out, transform 0.4s ease, opacity 0.5s;
             }}
-            .ship-yt {{
-                font-size: 3.5rem; color: #ef4444; 
-                filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.8));
-                transition: left 1s ease-out, opacity 0.5s, transform 0.3s;
-                transform: rotate(90deg); /* حالت سفینه‌ای */
+            .ship-wrapper {{
+                position: relative;
+                width: 60px; height: 60px;
+                display: flex; justify-content: center; align-items: center;
             }}
-            .ship-tg {{
-                font-size: 3.5rem; color: #3b82f6; 
-                filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8));
-                transition: right 1s ease-out, opacity 0.5s, transform 0.5s;
-                transform: rotate(-90deg);
+            
+            /* سفینه یوتیوب */
+            .ship-yt-body {{
+                width: 0; height: 0;
+                border-left: 20px solid transparent;
+                border-right: 20px solid transparent;
+                border-bottom: 50px solid #ef4444;
+                position: absolute;
+                filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.8));
             }}
+            .ship-yt-icon {{ position: absolute; top: 18px; color: white; font-size: 1.2rem; z-index: 2; }}
+
+            /* سفینه تلگرام */
+            .ship-tg-body {{
+                width: 55px; height: 25px;
+                background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+                border-radius: 50px 50px 15px 15px;
+                position: absolute; top: 25px;
+                filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.8));
+            }}
+            .ship-tg-dome {{
+                width: 34px; height: 20px; background: rgba(255,255,255,0.9);
+                border-radius: 50px 50px 0 0; position: absolute; top: 10px;
+            }}
+            .ship-tg-icon {{ position: absolute; color: white; font-size: 1.1rem; top: 26px; z-index: 2; }}
+
             .projectile {{
-                font-size: 1.5rem; color: #10b981; 
+                font-size: 1.8rem; color: #10b981; 
                 filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.9));
-                transition: left 0.6s linear, top 0.6s linear, opacity 0.2s;
+                transition: left 0.4s linear, top 0.4s linear, opacity 0.2s;
             }}
             .glass-particle {{
                 position: fixed; width: 12px; height: 12px;
@@ -192,7 +209,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 backdrop-filter: blur(4px);
                 border: 1px solid rgba(255,255,255,0.4);
                 border-radius: 4px;
-                pointer-events: none; z-index: 2;
+                pointer-events: none; z-index: 9999;
                 transition: transform 0.6s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.6s ease-out;
             }}
 
@@ -242,6 +259,10 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             .form-switch .form-check-input {{ background-color: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.1); cursor: pointer; float: none; margin-top: 0; width: 2.5em; height: 1.25em; }}
             .form-switch .form-check-input:checked {{ background-color: var(--accent-color); border-color: var(--accent-color); }}
 
+            ::-webkit-scrollbar {{ width: 8px; }}
+            ::-webkit-scrollbar-track {{ background: #0f172a; }}
+            ::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, 0.2); border-radius: 10px; }}
+            ::-webkit-scrollbar-thumb:hover {{ background: rgba(255, 255, 255, 0.4); }}
         </style>
     </head>
     <body>
@@ -250,7 +271,6 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
     <div class="bg-orb orb-2"></div>
     <div class="bg-orb orb-3"></div>
 
-    <!-- کانتینر اصلی داشبورد (z-index برای جلوگیری از تداخل با انیمیشن‌ها) -->
     <div class="main-content">
         <nav class="navbar navbar-glass sticky-top py-3 mb-4">
             <div class="container fixed-nav-container">
@@ -534,67 +554,104 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         // ----------------------------------------------------
         // انیمیشن سفینه فضایی (YouTube vs Telegram) 🚀
         // ----------------------------------------------------
+        function createShip(type) {{
+            const entity = document.createElement('div');
+            entity.className = `space-entity ship-wrapper`;
+            if (type === 'yt') {{
+                entity.innerHTML = `<div class="ship-yt-body"></div><i class="bi bi-youtube ship-yt-icon"></i>`;
+            }} else {{
+                entity.innerHTML = `<div class="ship-tg-dome"></div><div class="ship-tg-body"></div><i class="bi bi-telegram ship-tg-icon"></i>`;
+            }}
+            document.body.appendChild(entity);
+            return entity;
+        }}
+
         function triggerSpaceBattle() {{
             const animCheckbox = document.getElementById('c_anim');
             if (!animCheckbox || !animCheckbox.checked) return;
-            
-            const yt = document.createElement('i');
-            yt.className = 'bi bi-youtube space-entity ship-yt';
-            yt.style.top = (20 + Math.random() * 40) + '%';
-            yt.style.left = '-100px';
-            document.body.appendChild(yt);
-            
-            const tg = document.createElement('i');
-            tg.className = 'bi bi-telegram space-entity ship-tg';
-            tg.style.top = (20 + Math.random() * 40) + '%';
-            tg.style.right = '-100px';
-            document.body.appendChild(tg);
-            
-            // ورود سفینه‌ها
-            setTimeout(() => {{
-                yt.style.opacity = '1';
-                yt.style.left = '10%';
-                tg.style.opacity = '1';
-                tg.style.right = '10%';
-            }}, 100);
-            
-            // شلیک
-            setTimeout(() => {{
+
+            const yt = createShip('yt');
+            const tg = createShip('tg');
+
+            let ytX = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
+            let ytY = Math.random() * window.innerHeight;
+            let tgX = Math.random() < 0.5 ? -100 : window.innerWidth + 100;
+            let tgY = Math.random() * window.innerHeight;
+
+            yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
+            tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
+
+            setTimeout(() => {{ yt.style.opacity = '1'; tg.style.opacity = '1'; }}, 100);
+
+            let step = 0;
+            const maxSteps = 3 + Math.floor(Math.random() * 3);
+
+            function moveShips() {{
+                if (step >= maxSteps) {{
+                    shoot();
+                    return;
+                }}
+                
+                tgX = Math.max(100, Math.min(window.innerWidth - 100, tgX + (Math.random() - 0.5) * 600));
+                tgY = Math.max(100, Math.min(window.innerHeight - 100, tgY + (Math.random() - 0.5) * 500));
+                tg.style.left = tgX + 'px'; tg.style.top = tgY + 'px';
+
+                setTimeout(() => {{
+                    ytX = tgX + (Math.random() - 0.5) * 200;
+                    ytY = tgY + (Math.random() - 0.5) * 200;
+                    
+                    const angle = Math.atan2(tgY - ytY, tgX - ytX) * 180 / Math.PI;
+                    yt.style.transform = `rotate(${{angle + 90}}deg)`;
+                    
+                    yt.style.left = ytX + 'px'; yt.style.top = ytY + 'px';
+                    
+                    step++;
+                    setTimeout(moveShips, 1000);
+                }}, 300);
+            }}
+
+            function shoot() {{
+                const hit = Math.random() > 0.35; 
+
                 const proj = document.createElement('i');
                 proj.className = 'bi bi-cloud-arrow-down-fill space-entity projectile';
-                
-                const ytRect = yt.getBoundingClientRect();
-                const tgRect = tg.getBoundingClientRect();
-                
-                proj.style.top = (ytRect.top + 10) + 'px';
-                proj.style.left = ytRect.right + 'px';
+                proj.style.left = ytX + 'px'; proj.style.top = ytY + 'px';
                 proj.style.opacity = '1';
                 document.body.appendChild(proj);
-                
-                // حرکت موشک به سمت تلگرام
+
                 setTimeout(() => {{
-                    proj.style.top = (tgRect.top + 10) + 'px';
-                    proj.style.left = tgRect.left + 'px';
+                    if (hit) {{
+                        proj.style.left = tgX + 'px'; proj.style.top = tgY + 'px';
+                    }} else {{
+                        proj.style.left = (tgX + (Math.random() > 0.5 ? 300 : -300)) + 'px'; 
+                        proj.style.top = (tgY + (Math.random() > 0.5 ? 300 : -300)) + 'px';
+                        
+                        tg.style.left = '-200px'; tg.style.top = '-200px';
+                        tg.style.transform = 'scale(0.5)';
+                        tg.style.opacity = '0';
+                    }}
+
+                    setTimeout(() => {{
+                        proj.remove();
+                        if (hit) {{
+                            createGlassExplosion(tgX + 30, tgY + 30);
+                            tg.style.transform = 'scale(0)'; 
+                            tg.style.opacity = '0';
+                        }}
+                        
+                        yt.style.left = window.innerWidth + 200 + 'px';
+                        yt.style.opacity = '0';
+                        
+                        setTimeout(() => {{ yt.remove(); tg.remove(); }}, 1000);
+                    }}, 400); 
                 }}, 50);
-                
-                // برخورد و انفجار شیشه‌ای
-                setTimeout(() => {{
-                    proj.remove();
-                    createGlassExplosion(tgRect.left + 20, tgRect.top + 20);
-                    
-                    tg.style.transform = 'scale(0) rotate(180deg)';
-                    tg.style.opacity = '0';
-                    yt.style.transform = 'rotate(90deg) translateX(-50px)';
-                    yt.style.opacity = '0';
-                    
-                    setTimeout(() => {{ yt.remove(); tg.remove(); }}, 1000);
-                }}, 650);
-                
-            }}, 1500);
+            }}
+
+            setTimeout(moveShips, 500);
         }}
 
         function createGlassExplosion(x, y) {{
-            for(let i=0; i<8; i++) {{
+            for(let i=0; i<10; i++) {{
                 const p = document.createElement('div');
                 p.className = 'glass-particle';
                 p.style.left = x + 'px';
@@ -602,32 +659,28 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
                 document.body.appendChild(p);
                 
                 const angle = Math.random() * Math.PI * 2;
-                const distance = 40 + Math.random() * 80;
+                const distance = 50 + Math.random() * 100;
                 
                 setTimeout(() => {{
-                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg)`;
+                    p.style.transform = `translate(${{Math.cos(angle)*distance}}px, ${{Math.sin(angle)*distance}}px) rotate(${{Math.random()*360}}deg) scale(${{Math.random() + 0.5}})`;
                     p.style.opacity = '0';
                 }}, 20);
-                
                 setTimeout(() => p.remove(), 700);
             }}
         }}
 
-        // اولین نبرد 3 ثانیه بعد از لود صفحه (اگه دکمه روشن باشه)
         setTimeout(triggerSpaceBattle, 3000);
-        // نبردهای بعدی به صورت رندوم هر چند ثانیه
         setInterval(() => {{
             if (Math.random() > 0.4) triggerSpaceBattle();
-        }}, 12000);
+        }}, 15000);
 
-
-        // بقیه منطق‌ها (سابمیت واتر باتل، فیلتر ویدیو و مُدال)
         function submitQuickPlan(days, hours) {{
             document.getElementById('selectDays').value = days;
             document.getElementById('selectHours').value = hours;
             document.getElementById('planForm').submit();
         }}
 
+        // Water Bottle Hold Logic
         const holdBtn = document.getElementById('holdBtn');
         const waterFill = document.getElementById('waterFill');
         const settingsForm = document.getElementById('settingsForm');
@@ -659,6 +712,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
         holdBtn.addEventListener('touchstart', startHold, {{passive: false}});
         holdBtn.addEventListener('touchend', stopHold);
 
+        // Filter Logic
         function filterVideos(type, element) {{
             document.getElementById('currentFilterLabel').innerText = element.getAttribute(`data-${{currentLang}}`);
             document.getElementById('currentFilterLabel').setAttribute('data-en', element.getAttribute('data-en'));
@@ -684,6 +738,7 @@ def _render_admin_page(settings: dict, links: list, base_url: str) -> str:
             }});
         }}
 
+        // Modal Logic
         const myModal = new bootstrap.Modal(document.getElementById('linkModal'));
 
         function showModal(token, title, direct, urldl, tg, createdAt, expiresAt, isDeleted) {{
